@@ -1,5 +1,5 @@
 {
-  "name": "@nuttawutmalee/react-native-bluetooth-serial",
+  "name": "react-native-bluetooth-seq",
   "version": "1.0.0",
   "description": "'Bluetooth serial for react native'",
   "main": "index.js",
@@ -25,5 +25,11 @@
   },
   "peerDependencies": {
     "react-native": ">=0.40"
+  },
+  "devDependencies": {
+    "@babel/runtime": "^7.1.5",
+    "react": "^16.6.1",
+    "react-native": "^0.57.4",
+    "react-hot-loader": "^4.0.0"
   }
 }

@@ -7,21 +7,22 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		69CA06071CC43C2900AF6479 /* RCTBluetoothSerial.h in CopyFiles */ = {isa = PBXBuildFile; fileRef = 69CA06061CC43C2900AF6479 /* RCTBluetoothSerial.h */; };
+		69CA06071CC43C2900AF6479 /* RCTBluetoothSerial.h in Copy Files */ = {isa = PBXBuildFile; fileRef = 69CA06061CC43C2900AF6479 /* RCTBluetoothSerial.h */; };
 		69CA06091CC43C2900AF6479 /* RCTBluetoothSerial.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06081CC43C2900AF6479 /* RCTBluetoothSerial.m */; };
 		69CA06161CC49D5E00AF6479 /* BLE.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06101CC49D5E00AF6479 /* BLE.m */; };
 		69CA06171CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06131CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
-		69CA06011CC43C2900AF6479 /* CopyFiles */ = {
+		69CA06011CC43C2900AF6479 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "include/$(PRODUCT_NAME)";
 			dstSubfolderSpec = 16;
 			files = (
-				69CA06071CC43C2900AF6479 /* RCTBluetoothSerial.h in CopyFiles */,
+				69CA06071CC43C2900AF6479 /* RCTBluetoothSerial.h in Copy Files */,
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -35,6 +36,7 @@
 		69CA06111CC49D5E00AF6479 /* BLEDefines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BLEDefines.h; sourceTree = "<group>"; };
 		69CA06121CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "CBPeripheral+BTSExtensions.h"; sourceTree = "<group>"; };
 		69CA06131CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "CBPeripheral+BTSExtensions.m"; sourceTree = "<group>"; };
+		996C0CF12195F3DF00A2A171 /* PrinterSDK */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PrinterSDK; path = "../../../../Downloads/ZIJIANG PRINT BITMAP/IOS SDK/PrinterDemo/PrinterDemo/PrinterSDK"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -67,6 +69,7 @@
 		69CA06051CC43C2900AF6479 /* RCTBluetoothSerial */ = {
 			isa = PBXGroup;
 			children = (
+				996C0CF12195F3DF00A2A171 /* PrinterSDK */,
 				69CA060F1CC49D5E00AF6479 /* BLE.h */,
 				69CA06101CC49D5E00AF6479 /* BLE.m */,
 				69CA06111CC49D5E00AF6479 /* BLEDefines.h */,
@@ -87,7 +90,7 @@
 			buildPhases = (
 				69CA05FF1CC43C2900AF6479 /* Sources */,
 				69CA06001CC43C2900AF6479 /* Frameworks */,
-				69CA06011CC43C2900AF6479 /* CopyFiles */,
+				69CA06011CC43C2900AF6479 /* Copy Files */,
 			);
 			buildRules = (
 			);
@@ -104,8 +107,8 @@
 		69CA05FB1CC43C2900AF6479 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0730;
-				ORGANIZATIONNAME = "Jakub Martyčák";
+				LastUpgradeCheck = 1010;
+				ORGANIZATIONNAME = "Nuttawut Malee";
 				TargetAttributes = {
 					69CA06021CC43C2900AF6479 = {
 						CreatedOnToolsVersion = 7.3;
@@ -152,13 +155,23 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
@@ -196,13 +209,23 @@
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
 				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
 				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
 				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
 				CLANG_WARN_EMPTY_BODY = YES;
 				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
 				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
 				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
 				CLANG_WARN_UNREACHABLE_CODE = YES;
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";

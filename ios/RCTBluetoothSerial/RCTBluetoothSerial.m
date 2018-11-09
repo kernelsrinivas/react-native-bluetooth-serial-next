@@ -2,8 +2,8 @@
 //  RCTBluetoothSerial.m
 //  RCTBluetoothSerial
 //
-//  Created by Jakub Martyčák on 17.04.16.
-//  Copyright © 2016 Jakub Martyčák. All rights reserved.
+//  Created by Nuttawut Malee on 10.11.18.
+//  Copyright © 2016 Nuttawut Malee. All rights reserved.
 //
 
 #import "RCTBluetoothSerial.h"
