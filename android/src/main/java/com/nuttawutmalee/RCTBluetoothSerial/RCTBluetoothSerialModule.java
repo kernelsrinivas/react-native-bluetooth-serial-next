@@ -289,16 +289,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
         }
     }
 
-    @ReactMethod
-    /**
-     * Set string delimiter to split buffer when read from the device
-     */
-    public void withDelimiter(String delimiter, Promise promise) {
-        if (D) Log.d(TAG, "Set delimiter to " + delimiter);
-        this.delimiter = delimiter;
-        promise.resolve(true);
-    }
-
     /**************************************/
     /** Bluetooth device related methods **/
     /**************************************/
@@ -426,6 +416,8 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
      * Connect to device by id
      */
     public void connect(String id, Promise promise) {
+        if (D) Log.d(TAG, "connect");
+
         if (mBluetoothAdapter != null) {
             mConnectedPromise = promise;
             BluetoothDevice rawDevice = mBluetoothAdapter.getRemoteDevice(id);
@@ -437,7 +429,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
                     mConnectedPromise.resolve(device);
                 }
             } else {
-                promise.reject(new Exception("Could not connect to " + id));
+                registerFirstAvailableBluetoothDeviceDiscoveryReceiver();
             }
         } else {
             rejectNullBluetoothAdapter(promise);
@@ -449,6 +441,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
      * Disconnect from device
      */
     public void disconnect(Promise promise) {
+        if (D) Log.d(TAG, "disconnect");
         mBluetoothService.stop();
         promise.resolve(true);
     }
@@ -480,9 +473,9 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
     /**
      * Write base64 image string to device over serial port
      */
-    public void writeBase64ImageToDevice(String imageBase64, Promise promise) {
-        if (D) Log.d(TAG, "Write base64 image " + imageBase64);
-        String base64Image = imageBase64.split(",")[1];
+    public void writeBase64ImageToDevice(String message, Promise promise) {
+        if (D) Log.d(TAG, "Write base64 image " + message);
+        String base64Image = message.split(",")[1];
         Bitmap bitmap = base64ToBitmap(base64Image);
         byte[] data = POSPrintBitmap(bitmap, 384, 0);
         mBluetoothService.write(data);
@@ -512,8 +505,18 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
     }
 
     /***********/
-    /** Other **/
+    /** Others **/
     /***********/
+
+    @ReactMethod
+    /**
+     * Set string delimiter to split buffer when read from the device
+     */
+    public void withDelimiter(String delimiter, Promise promise) {
+        if (D) Log.d(TAG, "Set delimiter to " + delimiter);
+        this.delimiter = delimiter;
+        promise.resolve(true);
+    }
 
     @ReactMethod
     /**
@@ -738,6 +741,61 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
     }
 
     /**
+     * Return reject promise for null bluetooth adapter
+     * @param promise
+     */
+    private void rejectNullBluetoothAdapter(Promise promise) {
+        Exception e = new Exception("Bluetooth adapter not found");
+        Log.e(TAG, "Bluetooth adapter not found");
+        promise.reject(e);
+        onError(e);
+    }
+
+    /**
+     * Convert base64 string to bitmap
+     * @param content Base64 string
+     */
+    private Bitmap base64ToBitmap(String content) {
+        byte[] imageAsBytes = Base64.decode(content.getBytes(), Base64.DEFAULT);
+        return BitmapFactory.decodeByteArray(imageAsBytes, 0, imageAsBytes.length);
+    }
+
+    /**
+     * Convert bitmap to base64 string to
+     * @param bitmap Bitmap image
+     */
+    private String bitmapToBase64(Bitmap bitmap) {
+        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
+        byte[] byteArray = byteArrayOutputStream .toByteArray();
+        return Base64.encodeToString(byteArray, Base64.DEFAULT);
+    }
+
+    /**
+     * Print bitmap bytes
+     * @param mBitmap
+     * @param nWidth
+     * @param nMode
+     */
+    private byte[] POSPrintBitmap(Bitmap mBitmap, int nWidth, int nMode) {
+        int width = (nWidth + 7) / 8 * 8;
+        int height = mBitmap.getHeight() * width / mBitmap.getWidth();
+        height = (height + 7) / 8 * 8;
+
+        Bitmap rszBitmap = mBitmap;
+        if(mBitmap.getWidth() != width) {
+            rszBitmap = Other.resizeImage(mBitmap, width, height);
+        }
+
+        Bitmap grayBitmap = Other.toGrayscale(rszBitmap);
+
+        byte[] dithered = Other.thresholdToBWPic(grayBitmap);
+        byte[] data = Other.eachLinePixToCmd(dithered, width, nMode);
+
+        return data;
+    }
+
+    /**
      * Register receiver for device pairing
      * 
      * @param rawDevice Bluetooth device
@@ -843,6 +901,49 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
     }
 
     /**
+     * Register receiver for first available device discovery
+     */
+    private void registerFirstAvailableBluetoothDeviceDiscoveryReceiver() {
+        IntentFilter intentFilter = new IntentFilter();
+
+        intentFilter.addAction(BluetoothDevice.ACTION_FOUND);
+        intentFilter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
+
+        final BroadcastReceiver deviceDiscoveryReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                String action = intent.getAction();
+
+                if (D) Log.d(TAG, "onReceive called");
+
+                if (BluetoothAdapter.ACTION_DISCOVERY_STARTED.equals(action)) {
+                    if (D) Log.d(TAG, "Discovery started");
+                } else if (BluetoothDevice.ACTION_FOUND.equals(action)) {
+                    BluetoothDevice rawDevice = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
+
+                    if (D) Log.d(TAG, "Discovery first available device (device id: " + rawDevice.getAddress() + ")");
+
+                    mBluetoothService.connect(rawDevice);
+
+                    if (mConnectedPromise != null) {
+                        WritableMap device = deviceToWritableMap(rawDevice);
+                        mConnectedPromise.resolve(device);
+                    }
+
+                    try {
+                        mReactContext.unregisterReceiver(this);
+                    } catch (Exception e) {
+                        Log.e(TAG, "Unable to unregister receiver", e);
+                        onError(e);
+                    }
+                }
+            }
+        };
+
+        mReactContext.registerReceiver(deviceDiscoveryReceiver, intentFilter);
+    }
+
+    /**
      * Register receiver for bluetooth state change
      */
     private void registerBluetoothStateReceiver() {
@@ -874,60 +975,5 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
         };
 
         mReactContext.registerReceiver(bluetoothStateReceiver, intentFilter);
-    }
-
-    /**
-     * Return reject promise for null bluetooth adapter
-     * @param promise
-     */
-    private void rejectNullBluetoothAdapter(Promise promise) {
-        Exception e = new Exception("Bluetooth adapter not found");
-        Log.e(TAG, "Bluetooth adapter not found");
-        promise.reject(e);
-        onError(e);
-    }
-
-    /**
-     * Convert base64 string to bitmap
-     * @param content Base64 string
-     */
-    private Bitmap base64ToBitmap(String content) {
-        byte[] imageAsBytes = Base64.decode(content.getBytes(), Base64.DEFAULT);
-        return BitmapFactory.decodeByteArray(imageAsBytes, 0, imageAsBytes.length);
-    }
-
-    /**
-     * Convert bitmap to base64 string to
-     * @param bitmap Bitmap image
-     */
-    private String bitmapToBase64(Bitmap bitmap) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream .toByteArray();
-        return Base64.encodeToString(byteArray, Base64.DEFAULT);
-    }
-
-    /**
-     * Print bitmap bytes
-     * @param mBitmap
-     * @param nWidth
-     * @param nMode
-     */
-    private byte[] POSPrintBitmap(Bitmap mBitmap, int nWidth, int nMode) {
-        int width = (nWidth + 7) / 8 * 8;
-        int height = mBitmap.getHeight() * width / mBitmap.getWidth();
-        height = (height + 7) / 8 * 8;
-
-        Bitmap rszBitmap = mBitmap;
-        if(mBitmap.getWidth() != width) {
-            rszBitmap = Other.resizeImage(mBitmap, width, height);
-        }
-
-        Bitmap grayBitmap = Other.toGrayscale(rszBitmap);
-
-        byte[] dithered = Other.thresholdToBWPic(grayBitmap);
-        byte[] data = Other.eachLinePixToCmd(dithered, width, nMode);
-
-        return data;
     }
 }

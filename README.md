@@ -4,7 +4,7 @@ React Native version of [BluetoothSerial](https://github.com/don/BluetoothSerial
 
 ## Compatibility
 
-Officialy this library supports React Native >= 0.25, it may run on older versions but no guarantees.
+Officialy this library supports React Native >= 0.40, it may run on older versions but no guarantees.
 
 ## Installation
 
@@ -15,6 +15,7 @@ Officialy this library supports React Native >= 0.25, it may run on older versio
 ```
 <uses-permission android:name="android.permission.BLUETOOTH" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
+<uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 ```
 
 ## Manual installation

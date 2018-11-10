@@ -7,15 +7,16 @@
 //
 
 #import <React/RCTBridgeModule.h>
-#import <React/RCTEventDispatcher.h>
-
-//#import "RCTEventEmitter.h" Wasnt working properly yet, events were fired but listeneres not called
+#import <React/RCTEventEmitter.h>
 #import "BLE.h"
 
-@interface RCTBluetoothSerial : NSObject <RCTBridgeModule, BLEDelegate>
-{
-    BLE *_bleShield;
-    BOOL _subscribed;
+/**
+ * RCTBluetoothSerial is an abstract base class to be used for module that connect,
+ * read and write data from active peripheral.
+ */
+@interface RCTBluetoothSerial : RCTEventEmitter <RCTBridgeModule, BLEDelegate> {
+    BLE *_ble;
+    BOOL _hasListeners;
     RCTPromiseResolveBlock _connectionResolver;
     RCTPromiseRejectBlock _connectionRejector;
     NSString *_subscribeCallbackId;
@@ -24,4 +25,18 @@
     NSMutableString *_buffer;
     NSString *_delimiter;
 }
+
+/**
+ * Read buffer from beginning character to the first delimiter found
+ * and return the message
+ */
+- (NSString *)readUntilDelimiter:(NSString *)delimiter;
+- (NSMutableArray *)getPeripheralList;
+- (void)sendDataToSubscriber;
+- (CBPeripheral *)findPeripheralByUUID:(NSString *)uuid;
+- (void)connectToUUID:(NSString *)uuid;
+- (void)listPeripheralsTimer:(NSTimer *)timer;
+- (void)connectFirstDeviceTimer:(NSTimer *)timer;
+- (void)connectUuidTimer:(NSTimer *)timer;
+
 @end

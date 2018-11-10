@@ -22,6 +22,7 @@
 @synthesize activePeripheral;
 
 static bool isConnected = false;
+static bool isEnabled = false;
 static int rssi = 0;
 static const int MAX_BUF_LENGTH = 100;
 
@@ -36,14 +37,19 @@ CBUUID *serialServiceUUID;
 CBUUID *readCharacteristicUUID;
 CBUUID *writeCharacteristicUUID;
 
--(void) readRSSI
+-(void)readRSSI
 {
     [activePeripheral readRSSI];
 }
 
--(BOOL) isConnected
+-(BOOL)isConnected
 {
     return isConnected;
+}
+
+-(BOOL)isEnabled
+{
+    return isEnabled;
 }
 
 -(void) read
@@ -212,7 +218,7 @@ CBUUID *writeCharacteristicUUID;
     self.CM = [[CBCentralManager alloc] initWithDelegate:self queue:nil];
 }
 
-- (int) findBLEPeripherals:(int) timeout
+- (int) findBLEPeripherals
 {
     if (self.CM.state != CBCentralManagerStatePoweredOn)
     {
@@ -508,10 +514,11 @@ CBUUID *writeCharacteristicUUID;
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
 {
-    if (peripheral.identifier != NULL)
+    if (peripheral.identifier != NULL) {
         NSLog(@"Connected to %@ successful", peripheral.identifier.UUIDString);
-    else
+    } else {
         NSLog(@"Connected to NULL successful");
+    }
 
     self.activePeripheral = peripheral;
     [self.activePeripheral discoverServices:nil];

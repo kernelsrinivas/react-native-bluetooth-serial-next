@@ -120,11 +120,16 @@ BluetoothSerial.write = data => {
 };
 
 /**
- * Write base64 image to device
- * @param  {String} base64
+ * Write base64 image to device, you can pass string or buffer
+ * We must convert to base64 in RN there is no way to pass buffer directly
+ * @param  {Buffer|String} data
  * @return {Promise<Boolean>}
  */
-BluetoothSerial.writeBase64 = base64 =>
-  BluetoothSerial.writeBase64ImageToDevice(base64);
+BluetoothSerial.writeBase64Image = data => {
+  if (typeof data === "string") {
+    data = new Buffer(data);
+  }
+  return BluetoothSerial.writeBase64ImageToDevice(data.toString("base64"));
+};
 
 module.exports = BluetoothSerial;

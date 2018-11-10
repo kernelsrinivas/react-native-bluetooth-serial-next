@@ -7,9 +7,11 @@
     "test": "jest"
   },
   "dependencies": {
+    "@remobile/react-native-toast": "^1.0.7",
     "get-dev-paths": "^0.1.0",
     "react": "16.6.0-alpha.8af6728",
-    "react-native": "0.57.4"
+    "react-native": "0.57.4",
+    "react-native-bluetooth-serial-next": "file:.."
   },
   "devDependencies": {
     "babel-jest": "23.6.0",

@@ -3,21 +3,10 @@
 //  RCTBluetoothSerial
 //
 //  Created by Nuttawut Malee on 10.11.18.
-//  Copyright © 2016 Nuttawut Malee. All rights reserved.
+//  Copyright © 2018 Nuttawut Malee. All rights reserved.
 //
 
 #import "RCTBluetoothSerial.h"
-
-@interface RCTBluetoothSerial()
-- (NSString *)readUntilDelimiter:(NSString *)delimiter;
-- (NSMutableArray *)getPeripheralList;
-- (void)sendDataToSubscriber;
-- (CBPeripheral *)findPeripheralByUUID:(NSString *)uuid;
-- (void)connectToUUID:(NSString *)uuid;
-- (void)listPeripheralsTimer:(NSTimer *)timer;
-- (void)connectFirstDeviceTimer:(NSTimer *)timer;
-- (void)connectUuidTimer:(NSTimer *)timer;
-@end
 
 @implementation RCTBluetoothSerial
 
@@ -25,12 +14,17 @@ RCT_EXPORT_MODULE();
 
 @synthesize bridge = _bridge;
 
-- (instancetype)init {
-    _bleShield = [[BLE alloc] init];
-    [_bleShield controlSetup];
-    [_bleShield setDelegate:self];
-
-    _buffer = [[NSMutableString alloc] init];
+- (instancetype)init
+{
+    self = [super init];
+    if (self) {
+        _ble = [[BLE alloc] init];
+        _buffer = [[NSMutableString alloc] init];
+        _hasListeners = false;
+        
+        [_ble controlSetup];
+        [_ble setDelegate:self];
+    }
     return self;
 }
 
@@ -41,13 +35,44 @@ RCT_EXPORT_MODULE();
     return dispatch_get_main_queue();
 }
 
-- (NSArray<NSString *> *)supportedEvents
+#pragma mark - Methods available in Javascript
+
+/**
+ * Bluetooth related methods
+ */
+
+RCT_EXPORT_METHOD(requestEnable:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
 {
-    return @[@"connectionSuccess",@"connectionLost",@"bluetoothEnabled",@"bluetoothDisabled",@"data"];
+    
+}
+
+RCT_EXPORT_METHOD(enable:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    
+}
+
+RCT_EXPORT_METHOD(disable:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    
+}
+
+RCT_EXPORT_METHOD(isEnabled:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    if (_ble.isConnected) {
+        resolve((id)kCFBooleanTrue);
+    } else {
+        resolve((id)kCFBooleanFalse);
+    }
 }
 
 
-#pragma mark - Methods available form Javascript
+/**
+ * Connection related methods
+ */
 
 RCT_EXPORT_METHOD(connect:(NSString *)uuid
                   resolver:(RCTPromiseResolveBlock)resolve
@@ -79,42 +104,68 @@ RCT_EXPORT_METHOD(disconnect:(RCTPromiseResolveBlock)resolve
 
     _connectionResolver = nil;
     _connectionRejector = nil;
-
-    if (_bleShield.activePeripheral) {
-        if(_bleShield.activePeripheral.state == CBPeripheralStateConnected)
-        {
-            [[_bleShield CM] cancelPeripheralConnection:[_bleShield activePeripheral]];
+    
+    if (_ble.activePeripheral) {
+        if (_ble.activePeripheral.state == CBPeripheralStateConnected) {
+            [[_ble CM] cancelPeripheralConnection:[_ble activePeripheral]];
         }
     }
-
+    
     resolve((id)kCFBooleanTrue);
 }
 
-RCT_EXPORT_METHOD(subscribe:(NSString *)delimiter
+RCT_EXPORT_METHOD(isConnected:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    if (_ble.activePeripheral) {
+        if (_ble.activePeripheral.state == CBPeripheralStateConnected) {
+            resolve((id)kCFBooleanTrue);
+            return;
+        }
+    }
+    
+    resolve((id)kCFBooleanFalse);
+}
+
+/**
+ * Others
+ */
+
+RCT_EXPORT_METHOD(withDelimiter:(NSString *)delimiter
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    NSLog(@"subscribe");
-
+    NSLog(@"Set delimiter to %@", delimiter);
+    
     if (delimiter != nil) {
         _delimiter = [delimiter copy];
-        _subscribed = TRUE;
-        resolve((id)kCFBooleanTrue);
-    } else {
-        NSError *err = nil;
-        reject(@"no_delimiter", @"Delimiter was null", err);
     }
+    
+    resolve((id)kCFBooleanTrue);
 }
 
-RCT_EXPORT_METHOD(unsubscribe:(NSString *)delimiter
-                  resolver:(RCTPromiseResolveBlock)resolve)
+RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
 {
-    NSLog(@"unsubscribe");
-
-    _delimiter = nil;
-    _subscribed = FALSE;
-
+    long end = [_buffer length] - 1;
+    NSRange truncate = NSMakeRange(0, end);
+    [_buffer deleteCharactersInRange:truncate];
     resolve((id)kCFBooleanTrue);
+}
+
+RCT_EXPORT_METHOD(available:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    NSNumber *buffLen = [NSNumber numberWithInteger:[_buffer length]];
+    resolve(buffLen);
+}
+
+RCT_EXPORT_METHOD(setAdapterName:(NSString *)name
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejector:(RCTPromiseRejectBlock)reject)
+{
+    NSError *err = [NSError errorWithDomain:@"" code:500 userInfo:nil];
+    reject(@"E_SETTER", @"Cannot set adapter name in iOS", err);
 }
 
 RCT_EXPORT_METHOD(writeToDevice:(NSString *)message
@@ -165,14 +216,6 @@ RCT_EXPORT_METHOD(isConnected:(RCTPromiseResolveBlock)resolve
     }
 }
 
-RCT_EXPORT_METHOD(available:(RCTPromiseResolveBlock)resolve
-                  rejector:(RCTPromiseRejectBlock)reject)
-{
-    // future versions could use messageAsNSInteger, but realistically, int is fine for buffer length
-    NSNumber *buffLen = [NSNumber numberWithInteger:[_buffer length]];
-    resolve(buffLen);
-}
-
 RCT_EXPORT_METHOD(read:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
@@ -196,15 +239,12 @@ RCT_EXPORT_METHOD(readUntil:(NSString *)delimiter
     resolve(message);
 }
 
-RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve)
-{
-    long end = [_buffer length] - 1;
-    NSRange truncate = NSMakeRange(0, end);
-    [_buffer deleteCharactersInRange:truncate];
-    resolve((id)kCFBooleanTrue);
-}
-
 #pragma mark - BLEDelegate
+
+- (void)bleDidFindPeripherals:(CBPeripheral *)peripheral
+{
+    
+}
 
 - (void)bleDidReceiveData:(unsigned char *)data length:(int)length
 {
@@ -266,6 +306,34 @@ RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve)
     _connectionResolver = nil;
 }
 
+#pragma mark - RCTEventEmitter
+
+- (NSArray<NSString *> *)supportedEvents
+{
+    return @[@"bluetoothEnabled",
+             @"bluetoothDisabled",
+             @"pairingSuccess",
+             @"pairingFailed",
+             @"unpairingSuccess",
+             @"unpairingFailed",
+             @"connectionSuccess",
+             @"connectionFailed",
+             @"connectionLost",
+             @"read",
+             @"data",
+             @"error"];
+}
+
+- (void)startObserving
+{
+    _hasListeners = TRUE;
+}
+
+- (void)stopObserving
+{
+    _hasListeners = FALSE;
+}
+
 #pragma mark - timers
 
 -(void)listPeripheralsTimer:(NSTimer *)timer
@@ -318,7 +386,7 @@ RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve)
     }
 }
 
-#pragma mark - internal implemetation
+#pragma mark - Internal methods implemetation
 
 - (NSString*)readUntilDelimiter: (NSString*) delimiter
 {
@@ -380,17 +448,16 @@ RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve)
 
 // Ideally we'd get a callback when found, maybe _bleShield can be modified
 // to callback on centralManager:didRetrievePeripherals. For now, use a timer.
-- (void)scanForBLEPeripherals:(int)timeout
+- (void)scanForBLEPeripherals
 {
 
     NSLog(@"Scanning for BLE Peripherals");
 
-    // disconnect
+    // disconnect active peripherals
     if (_bleShield.activePeripheral) {
         if(_bleShield.activePeripheral.state == CBPeripheralStateConnected)
         {
             [[_bleShield CM] cancelPeripheralConnection:[_bleShield activePeripheral]];
-            return;
         }
     }
 
@@ -398,37 +465,57 @@ RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve)
     if (_bleShield.peripherals) {
         _bleShield.peripherals = nil;
     }
-
-    [_bleShield findBLEPeripherals:timeout];
+    
+    [_bleShield findBLEPeripherals];
+    [_bleShield didRetrievePeripherals:];
 }
 
 - (void)connectToFirstDevice
 {
 
-    [self scanForBLEPeripherals:3];
+    [self scanForBLEPeripherals];
+    
+    if(_bleShield.peripherals.count > 0) {
+        NSLog(@"Connecting");
+        [_bleShield connectPeripheral:[_bleShield.peripherals objectAtIndex:0]];
+    } else {
+        NSString *message = @"Did not find any BLE peripherals";
+        NSError *err = nil;
+        NSLog(@"%@", message);
+        _connectionRejector(@"no_peripherals", message, err);
+        
+    }
 
-    [NSTimer scheduledTimerWithTimeInterval:(float)3.0
-                                     target:self
-                                   selector:@selector(connectFirstDeviceTimer:)
-                                   userInfo:nil
-                                    repeats:NO];
+//    [NSTimer scheduledTimerWithTimeInterval:(float)3.0
+//                                     target:self
+//                                   selector:@selector(connectFirstDeviceTimer:)
+//                                   userInfo:nil
+//                                    repeats:NO];
 }
 
 - (void)connectToUUID:(NSString *)uuid
 {
 
-    int interval = 0;
-
     if (_bleShield.peripherals.count < 1) {
-        interval = 3;
-        [self scanForBLEPeripherals:interval];
+        [self scanForBLEPeripherals];
+    } else {
+        CBPeripheral *peripheral = [self findPeripheralByUUID:uuid];
+        
+        if (peripheral) {
+            [_bleShield connectPeripheral:peripheral];
+        } else {
+            NSString *message = [NSString stringWithFormat:@"Could not find peripheral %@.", uuid];
+            NSError *err = nil;
+            NSLog(@"%@", message);
+            _connectionRejector(@"wrong_uuid", message, err);
+        }
     }
 
-    [NSTimer scheduledTimerWithTimeInterval:interval
-                                     target:self
-                                   selector:@selector(connectUuidTimer:)
-                                   userInfo:uuid
-                                    repeats:NO];
+//    [NSTimer scheduledTimerWithTimeInterval:interval
+//                                     target:self
+//                                   selector:@selector(connectUuidTimer:)
+//                                   userInfo:uuid
+//                                    repeats:NO];
 }
 
 - (CBPeripheral*)findPeripheralByUUID:(NSString*)uuid
@@ -438,14 +525,14 @@ RCT_EXPORT_METHOD(clear:(RCTPromiseResolveBlock)resolve)
     CBPeripheral *peripheral = nil;
 
     for (CBPeripheral *p in peripherals) {
+        NSString *pid = p.identifier.UUIDString;
 
-        NSString *other = p.identifier.UUIDString;
-
-        if ([uuid isEqualToString:other]) {
+        if ([uuid isEqualToString:pid]) {
             peripheral = p;
             break;
         }
     }
+    
     return peripheral;
 }
 

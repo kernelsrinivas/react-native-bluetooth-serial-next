@@ -27,15 +27,14 @@
 -(void) bleDidUpdateRSSI:(NSNumber *) rssi;
 -(void) bleDidReceiveData:(unsigned char *) data length:(int) length;
 -(void) bleDidChangedState:(bool) isEnabled;
+-(void) bleDidFindPeripherals:(NSMutableArray *)peripherals;
 
 @required
 @end
 
-@interface BLE : NSObject <CBCentralManagerDelegate, CBPeripheralDelegate> {
+@interface BLE : NSObject <CBCentralManagerDelegate, CBPeripheralDelegate>
 
-}
-
-@property (nonatomic,assign) id <BLEDelegate> delegate;
+@property (nonatomic, assign) id<BLEDelegate> delegate;
 @property (strong, nonatomic) NSMutableArray *peripherals;
 @property (strong, nonatomic) CBCentralManager *CM;
 @property (strong, nonatomic) CBPeripheral *activePeripheral;
@@ -44,19 +43,31 @@
 -(void) read;
 -(void) writeValue:(CBUUID *)serviceUUID characteristicUUID:(CBUUID *)characteristicUUID p:(CBPeripheral *)p data:(NSData *)data;
 
--(BOOL) isConnected;
+/**
+ * Check if peripheral connected or not
+ */
+-(BOOL)isConnected;
+
+/**
+ * Check if central manager enabled or not
+ */
+-(BOOL)isEnabled;
+ 
 -(void) write:(NSData *)d;
 -(void) readRSSI;
 
+/**
+ * Instantiate CBCentralManager and assign it to CM variable
+ */
 -(void) controlSetup;
--(int) findBLEPeripherals:(int) timeout;
+-(void) findBLEPeripherals;
 -(void) connectPeripheral:(CBPeripheral *)peripheral;
 
 -(UInt16) swap:(UInt16) s;
 -(const char *) centralManagerStateToString:(int)state;
 -(void) scanTimer:(NSTimer *)timer;
 -(void) printKnownPeripherals;
--(void) printPeripheralInfo:(CBPeripheral*)peripheral;
+-(void) printPeripheralInfo:(CBPeripheral *)peripheral;
 
 -(void) getAllServicesFromPeripheral:(CBPeripheral *)p;
 -(void) getAllCharacteristicsFromPeripheral:(CBPeripheral *)p;
