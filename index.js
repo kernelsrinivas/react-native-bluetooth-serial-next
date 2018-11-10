@@ -1,7 +1,63 @@
 const ReactNative = require("react-native");
+const React = require("react");
 const { Buffer } = require("buffer");
-const { NativeModules, DeviceEventEmitter } = ReactNative;
+const { NativeModules, NativeEventEmitter } = ReactNative;
 const BluetoothSerial = NativeModules.BluetoothSerial;
+
+const DeviceEventEmitter = new NativeEventEmitter(BluetoothSerial);
+
+/**
+ * High order component that will
+ * attach native event emitter and
+ * send it as a props named subscription
+ *
+ * It will create an emitter when component did mount
+ * and remove all listeners when component will unmount
+ *
+ * @param  {String} [subscriptionName=subscription]
+ * @return {React.Component}
+ */
+const withSubscription = (
+  subscriptionName = "subscription"
+) => WrappedComponent => {
+  return class RTCBluetoothSerialComponent extends React.Component {
+    constructor(props) {
+      super(props);
+      this.subscription = null;
+    }
+
+    componentDidMount() {
+      this.subscription = new NativeEventEmitter(BluetoothSerial);
+      this.subscription.on = this.subscription.addListener;
+      this.subscription.off = this.subscription.removeListener;
+    }
+
+    componentWillUnmount() {
+      this.subscription &&
+        typeof this.subscription.remove === "function" &&
+        this.subscription.remove();
+
+      this.subscription &&
+        typeof this.subscription.removeAllListeners === "functions" &&
+        this.subscription.removeAllListeners();
+
+      this.subscription = null;
+    }
+
+    render() {
+      return (
+        <WrappedComponent
+          {...this.props}
+          {...{ [subscriptionName]: this.subscription }}
+        >
+          {this.props.children}
+        </WrappedComponent>
+      );
+    }
+  };
+};
+
+BluetoothSerial.withSubscription = withSubscription;
 
 /**
  * Listen for available event once
@@ -18,7 +74,7 @@ BluetoothSerial.once = (eventName, handler) =>
  * @param  {Function} handler Event handler
  * @return {EmitterSubscription}
  */
-BluetoothSerial.on = (eventName, handler) =>
+BluetoothSerial.addListener = (eventName, handler) =>
   DeviceEventEmitter.addListener(eventName, handler);
 
 /**
@@ -27,8 +83,7 @@ BluetoothSerial.on = (eventName, handler) =>
  * @param  {Function} handler Event handler
  * @return {EmitterSubscription}
  */
-BluetoothSerial.addListener = (eventName, handler) =>
-  DeviceEventEmitter.addListener(eventName, handler);
+BluetoothSerial.on = DeviceEventEmitter.addListener;
 
 /**
  * Remove subscription event
@@ -42,7 +97,7 @@ BluetoothSerial.removeSubscription = subscription =>
  * @param  {String} eventName
  * @param  {Function} handler Event handler
  */
-BluetoothSerial.off = (eventName, handler) =>
+BluetoothSerial.removeListener = (eventName, handler) =>
   DeviceEventEmitter.removeListener(eventName, handler);
 
 /**
@@ -50,8 +105,7 @@ BluetoothSerial.off = (eventName, handler) =>
  * @param  {String} eventName
  * @param  {Function} handler Event handler
  */
-BluetoothSerial.removeListener = (eventName, handler) =>
-  DeviceEventEmitter.removeListener(eventName, handler);
+BluetoothSerial.off = DeviceEventEmitter.removeListener;
 
 /**
  * Stop all listeners for event
@@ -61,7 +115,20 @@ BluetoothSerial.removeAllListeners = eventName =>
   DeviceEventEmitter.removeAllListeners(eventName);
 
 /**
- * Read data from device
+ * Listen and read data from device
+ * @param {Function} [callback=() => {}]
+ * @param {String} [delimiter=""]
+ */
+BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
+  BluetoothSerial.withDelimiter(delimiter).then(() => {
+    const subscriptionId = BluetoothSerial.on("read", data => {
+      callback(data, subscriptionId);
+    });
+  });
+};
+
+/**
+ * Read data from device once
  * @param  {String} [delimiter=""]
  * @return {Promise<String>}
  */
@@ -71,11 +138,10 @@ BluetoothSerial.readOnce = (delimiter = "") =>
     : BluetoothSerial.readFromDevice();
 
 /**
- * Read data from device every ms
+ * Read data from device every n ms
  * @param {Function} [callback=() => {}]
  * @param {Number} [ms=1000]
  * @param {String} [delimiter=""]
- * @return {number} IntervalId
  */
 BluetoothSerial.readEvery = (
   callback = () => {},
@@ -90,20 +156,6 @@ BluetoothSerial.readEvery = (
 
     callback(data, intervalId);
   }, ms);
-
-  return intervalId;
-};
-/**
- * Listen and read data from device
- * @param {Function} [callback=() => {}]
- * @param {String} [delimiter=""]
- */
-BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
-  BluetoothSerial.withDelimiter(delimiter).then(() => {
-    const timeoutId = BluetoothSerial.on("read", data => {
-      callback(data, timeoutId);
-    });
-  });
 };
 
 /**
