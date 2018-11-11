@@ -14,12 +14,26 @@ const DeviceEventEmitter = new NativeEventEmitter(BluetoothSerial);
  * It will create an emitter when component did mount
  * and remove all listeners when component will unmount
  *
- * @param  {String} [subscriptionName=subscription]
+ * @param  {Object}   [options]
+ * @param  {String}   [options.subscriptionName=subscription]
+ * @param  {Boolean}  [options.destroyOnWilUnmount=true]
  * @return {React.Component}
  */
 const withSubscription = (
-  subscriptionName = "subscription"
+  options = {
+    subscriptionName: "subscription",
+    destroyOnWilUnmount: true
+  }
 ) => WrappedComponent => {
+  const subscriptionName =
+    typeof options.subscriptionName === "string"
+      ? options.subscriptionName
+      : "subscription";
+  const destroyOnWilUnmount =
+    typeof options.destroyOnWilUnmount === "boolean"
+      ? options.destroyOnWilUnmount
+      : true;
+
   return class RTCBluetoothSerialComponent extends React.Component {
     constructor(props) {
       super(props);
@@ -33,15 +47,17 @@ const withSubscription = (
     }
 
     componentWillUnmount() {
-      this.subscription &&
-        typeof this.subscription.remove === "function" &&
-        this.subscription.remove();
+      if (destroyOnWilUnmount) {
+        this.subscription &&
+          typeof this.subscription.remove === "function" &&
+          this.subscription.remove();
 
-      this.subscription &&
-        typeof this.subscription.removeAllListeners === "functions" &&
-        this.subscription.removeAllListeners();
+        this.subscription &&
+          typeof this.subscription.removeAllListeners === "functions" &&
+          this.subscription.removeAllListeners();
 
-      this.subscription = null;
+        this.subscription = null;
+      }
     }
 
     render() {
@@ -56,8 +72,6 @@ const withSubscription = (
     }
   };
 };
-
-BluetoothSerial.withSubscription = withSubscription;
 
 /**
  * Listen for available event once
@@ -185,3 +199,4 @@ BluetoothSerial.writeBase64Image = data => {
 };
 
 module.exports = BluetoothSerial;
+exports.withSubscription = withSubscription;
