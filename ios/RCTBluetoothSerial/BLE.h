@@ -1,6 +1,7 @@
 
 /*
 
+ Edited by Nuttawut Malee on 10.11.18
  Copyright (c) 2013 RedBearLab
 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
@@ -20,66 +21,233 @@
 
 #import "CBPeripheral+BTSExtensions.h"
 
-@protocol BLEDelegate
-@optional
--(void) bleDidConnect;
--(void) bleDidDisconnect;
--(void) bleDidUpdateRSSI:(NSNumber *) rssi;
--(void) bleDidReceiveData:(unsigned char *) data length:(int) length;
--(void) bleDidChangedState:(bool) isEnabled;
--(void) bleDidFindPeripherals:(NSMutableArray *)peripherals;
+typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *peripherals);
 
+/**
+ * BLE delegate event to send data
+ * to delegate class.
+ */
+@protocol BLEDelegate
 @required
+/*!
+ *  @method didError
+ *
+ *  @param error The error that will be delegated to delegate class.
+ *
+ */
+- (void)didError:(NSError *)error;
+
+/*!
+ *  @method didConnect:peripheral
+ *
+ *  @param message      The extra message to tell delegate that peripheral is connected.
+ *  @param peripheral   The connected peripheral.
+ *
+ */
+- (void)didConnect:(NSString *)message peripheral:(CBPeripheral *) peripheral;
+
+/*!
+ *  @method didDisconnect:peripheral:
+ *
+ *  @param message      The extra message to tell delegate that peripheral is disconnected.
+ *  @param peripheral   The disconnected peripheral.
+ *
+ */
+- (void)didDisconnect:(NSString *)message peripheral:(CBPeripheral *) peripheral;
+
+/*!
+ *  @method didPowerOn
+ */
+- (void)didPowerOn;
+
+/*!
+ *  @method didPowerOff
+ */
+- (void)didPowerOff;
+
+
+/*!
+ *  @method didUpdateRSSI
+ *
+ *  @param rssi The updated RSSI number.
+ *
+ */
+- (void)didUpdateRSSI:(NSNumber *)rssi;
+
+/*!
+ *  @method didReceiveData:length:
+ *
+ *  @param data     The received data from peripheral buffer.
+ *  @param length   The length of received data.
+ *
+ */
+- (void)didReceiveData:(unsigned char *) data length:(int) length;
+
+/*!
+ *  @method didRetrievePeripherals
+ *
+ *  @param peripherals Array of discovered peripherals.
+ *
+ */
+- (void)didRetrievePeripherals:(NSMutableArray *)peripherals;
+
 @end
 
+/*!
+ * BLE wrapper class that implement
+ * common central manager and peripheral instance.
+ */
 @interface BLE : NSObject <CBCentralManagerDelegate, CBPeripheralDelegate>
 
+/*!
+ * The delegate object that will receive BLE central events.
+ */
 @property (nonatomic, assign) id<BLEDelegate> delegate;
-@property (strong, nonatomic) NSMutableArray *peripherals;
-@property (strong, nonatomic) CBCentralManager *CM;
+
+/*!
+ * Core bluetooth's Central manager, for implementing central role.
+ */
+@property (strong, nonatomic, readonly) CBCentralManager *manager;
+
+/**
+ * Peripherals that are nearby (sorted descending by RSSI values)
+ */
+@property (weak, nonatomic, readonly) NSArray *peripherals;
+
+/**
+ * List of scanned peripherals
+ */
+@property (strong, nonatomic) NSMutableArray *scannedPeripherals;
+
+/*!
+ * The active peripheral that has been paired and connected.
+ */
 @property (strong, nonatomic) CBPeripheral *activePeripheral;
 
--(void) enableReadNotification:(CBPeripheral *)p;
--(void) read;
--(void) writeValue:(CBUUID *)serviceUUID characteristicUUID:(CBUUID *)characteristicUUID p:(CBPeripheral *)p data:(NSData *)data;
+/*!
+ * CBCentralManager's state updated by centralManagerDidUpdateState:
+ */
+@property(nonatomic) CBCentralManagerState cbCentralManagerState;
+
+/*!
+ * Threshould to stop scanning for peripherals.
+ * When the number of discovered peripherals exceeds this value, scanning will be
+ * stopped even before the scan-interval.
+ */
+@property (assign, nonatomic) NSUInteger peripheralsCountToStop;
+
+/*!
+ * Indicates if active peripheral is connected.
+ */
+@property (assign, nonatomic, getter = isConnected) BOOL connected;
+
+/*!
+ * Indicates if central manager is ready for core bluetooth tasks. KVO observable.
+ */
+@property (assign, nonatomic, readonly, getter = isCentralReady) BOOL centralReady;
 
 /**
- * Check if peripheral connected or not
+ * Completion block for peripheral scanning.
  */
--(BOOL)isConnected;
+@property (copy, nonatomic) CentralManagerDiscoverPeripheralsCallback scanBlock;
 
-/**
- * Check if central manager enabled or not
+/*!
+ * KVO for centralReady and centralNotReadyReason
  */
--(BOOL)isEnabled;
- 
--(void) write:(NSData *)d;
--(void) readRSSI;
++ (NSSet *)keyPathsForValuesAffectingCentralReady;
 
-/**
- * Instantiate CBCentralManager and assign it to CM variable
++ (NSSet *)keyPathsForValuesAffectingCentralNotReadyReason;
+
+/*!
+ *  @method peripheralToDictionary
+ *
+ *  @param peripheral CBPeripheral
+ *
+ *  @discussion Get NSDictionary info of a peripheral.
+ *
  */
--(void) controlSetup;
--(void) findBLEPeripherals;
--(void) connectPeripheral:(CBPeripheral *)peripheral;
+- (NSDictionary *)peripheralToDictionary:(CBPeripheral *)peripheral;
 
--(UInt16) swap:(UInt16) s;
--(const char *) centralManagerStateToString:(int)state;
+/*!
+ *  @method readRSSI
+ *
+ *  @discussion Retrieves and delegate current RSSI of current
+ *              active peripheral that connected to central manager.
+ *
+ */
+- (void)readRSSI;
+
+/*!
+ *  @method enableReadNotification
+ *
+ *  @param peripheral
+ *
+ *  @discussion Notify peripheral read for a certain characteristic.
+ */
+- (void)enableReadNotification:(CBPeripheral *)peripheral;
+
+/*!
+ *  @method read
+ *
+ *  @discussion Read value from active peripheral
+ *              for a certain characteristic.
+ */
+- (void)read;
+
+/*!
+ *  @method write
+ *
+ *  @param data Data to be written to an active peripheral.
+ *
+ *  @discussion Write value to active peripheral
+ *              for a certain characteristic.
+ *
+ */
+- (void)write:(NSData *)data;
+
+/*!
+ *  @method scanForPeripheralsByInterval
+ *
+ *  @param interval Interval by which scan will be stopped.
+ *  @param callback Completion block will be called after
+ *                  <i>interval</i> with nearby peripherals.
+ *
+ *  @discussion Scans for nearby peripherals
+ *              and fills the - NSArray *peripherals.
+ *              Scan will be stoped after input interaval.
+ *
+ */
+- (void)scanForPeripheralsByInterval:(NSUInteger)interval
+                          completion:(CentralManagerDiscoverPeripheralsCallback)callback;
+
+/*!
+ *  @method stopScanForPeripheral
+ *
+ *  @discussion Stops ongoing scan proccess
+ *
+ */
+- (void)stopScanForPeripherals;
+
+/*!
+ *  @method connectToPeripheral
+ *
+ *  @param peripheral
+ *
+ *  @discussion Connect to certain peripheral
+ *              and assign activePeripheral to it.
+ *
+ */
+-(void)connectToPeripheral:(CBPeripheral *)peripheral;
+
+
+
+-(void)getAllCharacteristicsFromPeripheral:(CBPeripheral *)peripheral;
+-(CBService *)findServiceFromUUID:(CBUUID *)UUID peripheral:(CBPeripheral *)peripheral;
+-(CBCharacteristic *)findCharacteristicFromUUID:(CBUUID *)UUID service:(CBService*)service;
+
+
 -(void) scanTimer:(NSTimer *)timer;
 -(void) printKnownPeripherals;
 -(void) printPeripheralInfo:(CBPeripheral *)peripheral;
-
--(void) getAllServicesFromPeripheral:(CBPeripheral *)p;
--(void) getAllCharacteristicsFromPeripheral:(CBPeripheral *)p;
--(CBService *) findServiceFromUUID:(CBUUID *)UUID p:(CBPeripheral *)p;
--(CBCharacteristic *) findCharacteristicFromUUID:(CBUUID *)UUID service:(CBService*)service;
-
-//-(NSString *) NSUUIDToString:(NSUUID *) UUID;
--(NSString *) CBUUIDToString:(CBUUID *) UUID;
-
--(int) compareCBUUID:(CBUUID *) UUID1 UUID2:(CBUUID *)UUID2;
--(int) compareCBUUIDToInt:(CBUUID *) UUID1 UUID2:(UInt16)UUID2;
--(UInt16) CBUUIDToInt:(CBUUID *) UUID;
--(BOOL) UUIDSAreEqual:(NSUUID *)UUID1 UUID2:(NSUUID *)UUID2;
 
 @end

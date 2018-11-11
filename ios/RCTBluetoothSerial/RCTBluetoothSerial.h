@@ -34,9 +34,21 @@
 - (NSMutableArray *)getPeripheralList;
 - (void)sendDataToSubscriber;
 - (CBPeripheral *)findPeripheralByUUID:(NSString *)uuid;
+
+#pragma mark - Connection methods
+
+- (void)connectToFirstDevice;
 - (void)connectToUUID:(NSString *)uuid;
+
+#pragma mark - Timer methods
+
 - (void)listPeripheralsTimer:(NSTimer *)timer;
 - (void)connectFirstDeviceTimer:(NSTimer *)timer;
 - (void)connectUuidTimer:(NSTimer *)timer;
+
+/**
+ * Check if bluetooth is powered on or off
+ */
+- (void)bluetoothPowerStateTimer:(NSTimer *)timer;
 
 @end
