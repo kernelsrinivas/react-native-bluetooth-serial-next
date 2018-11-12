@@ -1,8 +1,9 @@
 const ReactNative = require("react-native");
 const React = require("react");
 const { Buffer } = require("buffer");
+
 const { NativeModules, NativeEventEmitter } = ReactNative;
-const BluetoothSerial = NativeModules.BluetoothSerial;
+const { BluetoothSerial } = NativeModules;
 
 const DeviceEventEmitter = new NativeEventEmitter(BluetoothSerial);
 

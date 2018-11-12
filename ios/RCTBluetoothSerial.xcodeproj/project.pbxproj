@@ -11,7 +11,7 @@
 		69CA06091CC43C2900AF6479 /* RCTBluetoothSerial.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06081CC43C2900AF6479 /* RCTBluetoothSerial.m */; };
 		69CA06161CC49D5E00AF6479 /* BLE.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06101CC49D5E00AF6479 /* BLE.m */; };
 		69CA06171CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06131CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m */; };
-		9950535821998436006A7453 /* PrinterSDK.h in Frameworks */ = {isa = PBXBuildFile; fileRef = 9950535721998436006A7453 /* PrinterSDK.h */; };
+		9950535821998436006A7453 /* PrinterSDK.h in Sources */ = {isa = PBXBuildFile; fileRef = 9950535721998436006A7453 /* PrinterSDK.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -46,7 +46,6 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9950535821998436006A7453 /* PrinterSDK.h in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -152,6 +151,7 @@
 				69CA06091CC43C2900AF6479 /* RCTBluetoothSerial.m in Sources */,
 				69CA06161CC49D5E00AF6479 /* BLE.m in Sources */,
 				69CA06171CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m in Sources */,
+				9950535821998436006A7453 /* PrinterSDK.h in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

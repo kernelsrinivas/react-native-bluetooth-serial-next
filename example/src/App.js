@@ -90,7 +90,7 @@ class BluetoothSerialExample extends Component {
     };
   }
 
-  componentWillMount() {
+  componentDidMount() {
     Promise.all([BluetoothSerial.isEnabled(), BluetoothSerial.list()]).then(
       values => {
         const [isEnabled, devices] = values;
