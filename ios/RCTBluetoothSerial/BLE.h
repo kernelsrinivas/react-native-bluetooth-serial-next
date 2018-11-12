@@ -1,29 +1,28 @@
-
 /*
-
+ 
  Edited by Nuttawut Malee on 10.11.18
  Copyright (c) 2013 RedBearLab
-
+ 
  Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
-
+ 
  The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
+ 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-*/
+ 
+ */
 
 #import <Foundation/Foundation.h>
 #if TARGET_OS_IPHONE
-    #import <CoreBluetooth/CoreBluetooth.h>
+#import <CoreBluetooth/CoreBluetooth.h>
 #else
-    #import <IOBluetooth/IOBluetooth.h>
+#import <IOBluetooth/IOBluetooth.h>
 #endif
 
 #import "CBPeripheral+BTSExtensions.h"
 
 typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *peripherals);
 
-/**
+/*!
  * BLE delegate event to send data
  * to delegate class.
  */
@@ -54,40 +53,6 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (void)didError:(NSError *)error;
 
 /*!
- *  @method didPairSuccessful
- *
- *  @param peripehral   The paired peripheral.
- *
- */
-- (void)didPairSuccessful:(CBPeripheral *)peripheral;
-
-/*!
- *  @method didPairUnsuccessful
- *
- *  @param peripehral   The paired peripheral.
- *
- */
-
-- (void)didPairUnsuccessful:(CBPeripheral *)peripheral;
-
-/*!
- *  @method didUnpairSuccessful
- *
- *  @param peripehral   The paired peripheral.
- *
- */
-- (void)didUnpairSuccessful:(CBPeripheral *)peripheral;
-
-/*!
- *  @method didUnpairUnsuccessful
- *
- *  @param peripehral   The paired peripheral.
- *
- */
-
-- (void)didUnpairUnsuccessful:(CBPeripheral *)peripheral;
-
-/*!
  *  @method didConnect
  *
  *  @param peripheral   The connected peripheral.
@@ -112,14 +77,6 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (void)didConnectionLost:(CBPeripheral *) peripheral;
 
 /*!
- *  @method didUpdateRSSI
- *
- *  @param rssi The updated RSSI number.
- *
- */
-- (void)didUpdateRSSI:(NSNumber *)rssi;
-
-/*!
  *  @method didReceiveData:length:
  *
  *  @param data     The received data from peripheral buffer.
@@ -127,6 +84,16 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  *
  */
 - (void)didReceiveData:(unsigned char *) data length:(NSInteger) length;
+
+@optional
+
+/*!
+ *  @method didUpdateRSSI
+ *
+ *  @param rssi The updated RSSI number.
+ *
+ */
+- (void)didUpdateRSSI:(NSNumber *)rssi;
 
 @end
 
@@ -144,14 +111,14 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 /*!
  * Core bluetooth's Central manager, for implementing central role.
  */
-@property (strong, nonatomic, readonly) CBCentralManager *manager;
+@property (strong, nonatomic) CBCentralManager *manager;
 
-/**
+/*!
  * Peripherals that are nearby (sorted descending by RSSI values)
  */
 @property (weak, nonatomic, readonly) NSArray *peripherals;
 
-/**
+/*!
  * List of scanned peripherals
  */
 @property (strong, nonatomic) NSMutableArray *scannedPeripherals;
@@ -178,12 +145,17 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  */
 @property (assign, nonatomic, getter = isConnected) BOOL connected;
 
+/**
+ * Indicates if CBCentralManager is scanning for peripherals
+ */
+@property (nonatomic, getter = isScanning) BOOL scanning;
+
 /*!
  * Indicates if central manager is ready for core bluetooth tasks. KVO observable.
  */
 @property (assign, nonatomic, readonly, getter = isCentralReady) BOOL centralReady;
 
-/**
+/*!
  * Completion block for peripheral scanning.
  */
 @property (copy, nonatomic) CentralManagerDiscoverPeripheralsCallback scanBlock;
@@ -200,10 +172,10 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  *
  *  @param peripheral CBPeripheral
  *
- *  @discussion Get NSDictionary info of a peripheral.
+ *  @discussion Get NSMutableDictionary info of a peripheral.
  *
  */
-- (NSDictionary *)peripheralToDictionary:(CBPeripheral *)peripheral;
+- (NSMutableDictionary *)peripheralToDictionary:(CBPeripheral *)peripheral;
 
 /*!
  *  @method readActivePeripheralRSSI
@@ -286,5 +258,13 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  */
 
 - (void)disconnectToPeripheral:(CBPeripheral *)peripheral;
+
+/*!
+ *  @method centralManagerSetup
+ *
+ *  @discussion Request bluetooth enable settings.
+ *
+ */
+- (void)centralManagerSetup;
 
 @end

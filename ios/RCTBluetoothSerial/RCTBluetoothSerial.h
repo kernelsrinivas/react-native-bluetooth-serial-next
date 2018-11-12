@@ -1,53 +1,65 @@
-//
-//  RCTBluetoothSerial.h
-//  RCTBluetoothSerial
-//
-//  Created by Nuttawut Malee on 10.11.18.
-//  Copyright © 2016 Nuttawut Malee. All rights reserved.
-//
+/*
+ 
+ Created by Nuttawut Malee on 10.11.18.
+ Copyright © 2016 Nuttawut Malee. All rights reserved.
+ 
+ Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+ 
+ The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+ 
+ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ 
+ */
 
 #import <React/RCTBridgeModule.h>
 #import <React/RCTEventEmitter.h>
 #import "BLE.h"
 
-/**
+typedef void (^RCTBluetoothSerialPeripheralCallback) (CBPeripheral *_Nullable peripheral);
+
+/*!
  * RCTBluetoothSerial is an abstract base class to be used for module that connect,
  * read and write data from active peripheral.
  */
-@interface RCTBluetoothSerial : RCTEventEmitter <RCTBridgeModule, BLEDelegate> {
-    BLE *_ble;
-    BOOL _hasListeners;
-    RCTPromiseResolveBlock _connectionResolver;
-    RCTPromiseRejectBlock _connectionRejector;
-    NSString *_subscribeCallbackId;
-    NSString *_subscribeBytesCallbackId;
-    NSString *_rssiCallbackId;
-    NSMutableString *_buffer;
-    NSString *_delimiter;
-}
+@interface RCTBluetoothSerial : RCTEventEmitter <RCTBridgeModule, BLEDelegate>
 
-/**
- * Read buffer from beginning character to the first delimiter found
- * and return the message
+/*!
+ * BLE central manager, for scanning and connection events.
  */
-- (NSString *)readUntilDelimiter:(NSString *)delimiter;
-- (NSMutableArray *)getPeripheralList;
-- (void)sendDataToSubscriber;
-- (CBPeripheral *)findPeripheralByUUID:(NSString *)uuid;
+@property (strong, nonatomic, readonly) BLE *ble;
 
-#pragma mark - Connection methods
+/*!
+ * Indicates if there are at least one listeners from RCTEventEmitter.
+ */
+@property (assign, nonatomic, getter = hasListeners) BOOL doesHaveListeners;
 
-- (void)connectToFirstDevice;
-- (void)connectToUUID:(NSString *)uuid;
+/*!
+ * Buffer from active peripheral read value.
+ */
+@property (strong, nonatomic) NSMutableString *buffer;
 
-#pragma mark - Timer methods
+/*!
+ * Certain delimiter to indicate the end of sliced buffer.
+ */
+@property (strong, nonatomic) NSMutableString *delimiter;
 
-- (void)listPeripheralsTimer:(NSTimer *)timer;
-- (void)connectFirstDeviceTimer:(NSTimer *)timer;
-- (void)connectUuidTimer:(NSTimer *)timer;
+/*!
+ * Resolver block for connection related function.
+ */
+@property (copy, nonatomic) RCTPromiseResolveBlock connectionResolver;
+
+/*!
+ * Rejector block for connection related function.
+ */
+@property (copy, nonatomic) RCTPromiseRejectBlock connectionRejector;
 
 /**
- * Check if bluetooth is powered on or off
+ *  @method bluetoothPowerStateTimer
+ *
+ *  @param timer
+ *
+ *  @discussion Indicates central manager power state.
+ *
  */
 - (void)bluetoothPowerStateTimer:(NSTimer *)timer;
 

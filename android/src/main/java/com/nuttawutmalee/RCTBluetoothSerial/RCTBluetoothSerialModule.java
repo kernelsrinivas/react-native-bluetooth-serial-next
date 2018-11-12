@@ -43,10 +43,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
     // Event names
     private static final String BT_ENABLED = "bluetoothEnabled";
     private static final String BT_DISABLED = "bluetoothDisabled";
-    private static final String PR_SUCCESS = "pairingSuccess";
-    private static final String PR_FAILED = "pairingFailed";
-    private static final String UN_PR_SUCCESS = "unpairingSuccess";
-    private static final String UN_PR_FAILED = "unpairingFailed";
     private static final String CONN_SUCCESS = "connectionSuccess";
     private static final String CONN_FAILED = "connectionFailed";
     private static final String CONN_LOST = "connectionLost";
@@ -319,7 +315,7 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
     /**
      * Discover unpaired bluetooth devices
      */
-    public void discoverUnpairedDevices(Promise promise) {
+    public void listUnpaired(Promise promise) {
         if (D) Log.d(TAG, "Discover unpaired called");
 
         if (mBluetoothAdapter != null) {
@@ -378,7 +374,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
                 pairDevice(device);
             } else {
                 promise.reject(new Exception("Could not pair device " + id));
-                sendEvent(PR_FAILED, null);
             }
         } else {
             rejectNullBluetoothAdapter(promise);
@@ -400,7 +395,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
                 unpairDevice(device);
             } else {
                 promise.reject(new Exception("Could not unpair device " + id));
-                sendEvent(UN_PR_FAILED, null);
             }
         } else {
             rejectNullBluetoothAdapter(promise);
@@ -713,7 +707,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
                 mPairDevicePromise.reject(e);
                 mPairDevicePromise = null;
             }
-            sendEvent(PR_FAILED, null);
             onError(e);
         }
     }
@@ -735,7 +728,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
                 mPairDevicePromise.reject(e);
                 mPairDevicePromise = null;
             }
-            sendEvent(UN_PR_FAILED, null);
             onError(e);
         }
     }
@@ -819,7 +811,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
 
                     if (state == BluetoothDevice.BOND_BONDED && prevState == BluetoothDevice.BOND_BONDING) {
                         if (D) Log.d(TAG, "Device paired");
-                        sendEvent(PR_SUCCESS, device);
                         if (mPairDevicePromise != null) {
                             mPairDevicePromise.resolve(device);
                             mPairDevicePromise = null;
@@ -832,7 +823,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
                         }
                     } else if (state == BluetoothDevice.BOND_NONE && prevState == BluetoothDevice.BOND_BONDED) {
                         if (D) Log.d(TAG, "Device unpaired");
-                        sendEvent(UN_PR_SUCCESS, device);
                         if (mPairDevicePromise != null) {
                             mPairDevicePromise.resolve(device);
                             mPairDevicePromise = null;

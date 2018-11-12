@@ -198,5 +198,10 @@ BluetoothSerial.writeBase64Image = data => {
   return BluetoothSerial.writeBase64ImageToDevice(data.toString("base64"));
 };
 
-module.exports = BluetoothSerial;
+// Alias
+BluetoothSerial.discoverUnpairedDevice = BluetoothSerial.listUnpaired;
+BluetoothSerial.isScanning = BluetoothSerial.isDiscovering;
+BluetoothSerial.stopScanning = BluetoothSerial.cancelDiscovery;
+
 exports.withSubscription = withSubscription;
+module.exports = BluetoothSerial;
