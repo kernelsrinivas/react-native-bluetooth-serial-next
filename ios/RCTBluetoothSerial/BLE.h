@@ -30,6 +30,22 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 @protocol BLEDelegate
 @required
 /*!
+ *  @method didPowerOn
+ *
+ *  @discussion Delegate bluetooth enabled.
+ *
+ */
+- (void)didPowerOn;
+
+/*!
+ *  @method didPowerOff
+ *
+ *  @discussion Delegate bluetooth disabled.
+ *
+ */
+- (void)didPowerOff;
+
+/*!
  *  @method didError
  *
  *  @param error The error that will be delegated to delegate class.
@@ -38,33 +54,62 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (void)didError:(NSError *)error;
 
 /*!
- *  @method didConnect:peripheral
+ *  @method didPairSuccessful
  *
- *  @param message      The extra message to tell delegate that peripheral is connected.
+ *  @param peripehral   The paired peripheral.
+ *
+ */
+- (void)didPairSuccessful:(CBPeripheral *)peripheral;
+
+/*!
+ *  @method didPairUnsuccessful
+ *
+ *  @param peripehral   The paired peripheral.
+ *
+ */
+
+- (void)didPairUnsuccessful:(CBPeripheral *)peripheral;
+
+/*!
+ *  @method didUnpairSuccessful
+ *
+ *  @param peripehral   The paired peripheral.
+ *
+ */
+- (void)didUnpairSuccessful:(CBPeripheral *)peripheral;
+
+/*!
+ *  @method didUnpairUnsuccessful
+ *
+ *  @param peripehral   The paired peripheral.
+ *
+ */
+
+- (void)didUnpairUnsuccessful:(CBPeripheral *)peripheral;
+
+/*!
+ *  @method didConnect
+ *
  *  @param peripheral   The connected peripheral.
  *
  */
-- (void)didConnect:(NSString *)message peripheral:(CBPeripheral *) peripheral;
+- (void)didConnect:(CBPeripheral *) peripheral;
 
 /*!
- *  @method didDisconnect:peripheral:
+ *  @method didFailToConnect
  *
- *  @param message      The extra message to tell delegate that peripheral is disconnected.
- *  @param peripheral   The disconnected peripheral.
+ *  @param peripheral   The connected peripheral.
  *
  */
-- (void)didDisconnect:(NSString *)message peripheral:(CBPeripheral *) peripheral;
+- (void)didFailToConnect:(CBPeripheral *) peripheral;
 
 /*!
- *  @method didPowerOn
+ *  @method didConnectionLost
+ *
+ *  @param peripheral   The connected peripheral.
+ *
  */
-- (void)didPowerOn;
-
-/*!
- *  @method didPowerOff
- */
-- (void)didPowerOff;
-
+- (void)didConnectionLost:(CBPeripheral *) peripheral;
 
 /*!
  *  @method didUpdateRSSI
@@ -81,15 +126,7 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  *  @param length   The length of received data.
  *
  */
-- (void)didReceiveData:(unsigned char *) data length:(int) length;
-
-/*!
- *  @method didRetrievePeripherals
- *
- *  @param peripherals Array of discovered peripherals.
- *
- */
-- (void)didRetrievePeripherals:(NSMutableArray *)peripherals;
+- (void)didReceiveData:(unsigned char *) data length:(NSInteger) length;
 
 @end
 
@@ -169,13 +206,13 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (NSDictionary *)peripheralToDictionary:(CBPeripheral *)peripheral;
 
 /*!
- *  @method readRSSI
+ *  @method readActivePeripheralRSSI
  *
  *  @discussion Retrieves and delegate current RSSI of current
  *              active peripheral that connected to central manager.
  *
  */
-- (void)readRSSI;
+- (void)readActivePeripheralRSSI;
 
 /*!
  *  @method enableReadNotification
@@ -237,17 +274,17 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  *              and assign activePeripheral to it.
  *
  */
--(void)connectToPeripheral:(CBPeripheral *)peripheral;
+- (void)connectToPeripheral:(CBPeripheral *)peripheral;
 
+/*!
+ *  @method disconnectToPeripheral
+ *
+ *  @param peripheral
+ *
+ *  @discussion Cancel connect of a certain peripheral.
+ *
+ */
 
-
--(void)getAllCharacteristicsFromPeripheral:(CBPeripheral *)peripheral;
--(CBService *)findServiceFromUUID:(CBUUID *)UUID peripheral:(CBPeripheral *)peripheral;
--(CBCharacteristic *)findCharacteristicFromUUID:(CBUUID *)UUID service:(CBService*)service;
-
-
--(void) scanTimer:(NSTimer *)timer;
--(void) printKnownPeripherals;
--(void) printPeripheralInfo:(CBPeripheral *)peripheral;
+- (void)disconnectToPeripheral:(CBPeripheral *)peripheral;
 
 @end
