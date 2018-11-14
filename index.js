@@ -98,13 +98,6 @@ BluetoothSerial.on = (eventName, handler, context) =>
   DeviceEventEmitter.addListener(eventName, handler, context);
 
 /**
- * Removes a specific subscription. Called by the `remove()` method of the
- * subscription itself to ensure any necessary cleanup is performed.
- */
-BluetoothSerial.removeSubscription = subscription =>
-  DeviceEventEmitter.removeSubscription(subscription);
-
-/**
  * Removes the given listener for event of specific type.
  *
  * @param eventName - Name of the event to emit
@@ -117,8 +110,8 @@ BluetoothSerial.removeSubscription = subscription =>
  *   }); // removes the listener if already registered
  *
  */
-BluetoothSerial.removeListener = (eventName, handler, context) =>
-  DeviceEventEmitter.removeListener(eventName, handler, context);
+BluetoothSerial.removeListener = (eventName, handler) =>
+  DeviceEventEmitter.removeListener(eventName, handler);
 
 /**
  * Removes the given listener for event of specific type.
@@ -147,6 +140,13 @@ BluetoothSerial.removeAllListeners = eventName =>
   DeviceEventEmitter.removeAllListeners(eventName);
 
 /**
+ * Removes a specific subscription. Called by the `remove()` method of the
+ * subscription itself to ensure any necessary cleanup is performed.
+ */
+BluetoothSerial.removeSubscription = subscription =>
+  DeviceEventEmitter.removeSubscription(subscription);
+
+/**
  * Listen and read data from device.
  *
  * @param {Function} [callback=() => {}]
@@ -154,7 +154,7 @@ BluetoothSerial.removeAllListeners = eventName =>
  */
 BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
   BluetoothSerial.withDelimiter(delimiter).then(() => {
-    const subscription = BluetoothSerial.on("read", data => {
+    const subscription = BluetoothSerial.addListener("read", data => {
       callback(data, subscription);
     });
   });
@@ -207,7 +207,7 @@ BluetoothSerial.write = data => {
   return BluetoothSerial.writeToDevice(data.toString("base64"));
 };
 
-BluetoothSerial.discoverUnpairedDevice = BluetoothSerial.listUnpaired;
+BluetoothSerial.discoverUnpairedDevices = BluetoothSerial.listUnpaired;
 BluetoothSerial.stopScanning = BluetoothSerial.cancelDiscovery;
 
 export default BluetoothSerial;

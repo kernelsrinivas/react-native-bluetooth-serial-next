@@ -45,7 +45,7 @@ declare namespace BluetoothSerial {
   }
 
   /**
-   * Prompts user to enable bluetooth adapter.
+   * Prompts user device to enable bluetooth adapter.
    *
    * @throws this will throws an error in iOS because it does not
    *         support this function.
@@ -97,9 +97,7 @@ declare namespace BluetoothSerial {
    * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
-  export function disconnect(): Proimise<
-    AndroidBluetoothDevice | iOSBluetoothDevice
-  >;
+  export function disconnect(): Proimise<boolean>;
 
   /**
    * Indicates if you are connected with active bluetooth device / peripheral or not.
@@ -184,7 +182,7 @@ declare namespace BluetoothSerial {
   ): Proimise<AndroidBluetoothDevice | iOSBluetoothDevice>;
 
   /**
-   * Listen and read data from device.
+   * Listen and read data from connected device.
    *
    * @param callback
    * @param delimiter
@@ -198,32 +196,33 @@ declare namespace BluetoothSerial {
   ): void;
 
   /**
-   * Read data from device once.
+   * Read data from connected device once.
    *
    * @param delimiter
    */
   export function readOnce(delimiter?: string): Promise<string>;
 
   /**
-   * Read data from device every n ms.
+   * Read data from connected device every n ms.
    *
    * @param callback
    * @param ms
    * @param delimiter
    */
   export function readEvery(
-    callback: (data: string, intervalId: NodeJS.Timeout) => {},
+    callback: (data: string, intervalId: number) => {},
     ms?: number,
     delimiter?: string
   ): void;
 
   /**
-   * Read all buffer data from device.
+   * Read all buffer data from connected device.
    */
   export function readFromDevice(): Promise<string>;
 
   /**
-   * Read all buffer data up to particular delimiter.
+   * Read all buffer data up to particular delimiter
+   * from connected device.
    *
    * @param delimiter
    */
@@ -256,7 +255,7 @@ declare namespace BluetoothSerial {
   export function available(): Promise<number>;
 
   /**
-   * Set bluetooth adapter a name.
+   * Set bluetooth adapter a new name.
    *
    * @param name
    *
@@ -272,7 +271,7 @@ declare namespace BluetoothSerial {
    *
    * @param delimiter
    */
-  export function withDelimiter(delimiter: string): Promise<string>;
+  export function withDelimiter(delimiter: string): Promise<boolean>;
 
   /**
    * Similar to addListener, except that the listener is removed after it is
