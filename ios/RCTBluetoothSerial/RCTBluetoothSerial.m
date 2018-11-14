@@ -188,8 +188,7 @@ RCT_EXPORT_METHOD(connect:(NSString *)uuid
     }];
 }
 
-RCT_EXPORT_METHOD(disconnect:(NSString *)uuid
-                  resolver:(RCTPromiseResolveBlock)resolve
+RCT_EXPORT_METHOD(disconnect:resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
     NSLog(@"Disconnect from peripheral");

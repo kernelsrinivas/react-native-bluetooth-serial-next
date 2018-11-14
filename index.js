@@ -8,10 +8,10 @@ const { BluetoothSerial } = NativeModules;
 /**
  * High order component that will
  * attach native event emitter and
- * send it as a props named subscription
+ * send it as a props named subscription.
  *
  * It will create an emitter when component did mount
- * and remove all listeners when component will unmount
+ * and remove all listeners when component will unmount.
  *
  * @param  {Object}   [options]
  * @param  {String}   [options.subscriptionName=subscription]
@@ -61,78 +61,108 @@ export const withSubscription = (
 };
 
 /**
- * Listen for available event once
- * @param  {String} eventName
- * @param  {Function} handler Event handler
- * @return {EmitterSubscription}
+ * Similar to addListener, except that the listener is removed after it is
+ * invoked once.
+ *
+ * @param eventName - Name of the event to listen to
+ * @param listener - Function to invoke only once when the
+ *   specified event is emitted
+ * @param context - Optional context object to use when invoking the
+ *   listener
  */
-BluetoothSerial.once = (eventName, handler) =>
-  DeviceEventEmitter.once(eventName, handler);
+BluetoothSerial.once = (eventName, handler, context) =>
+  DeviceEventEmitter.once(eventName, handler, context);
 
 /**
- * Listen for available events
- * @param  {String} eventName
- * @param  {Function} handler Event handler
- * @return {EmitterSubscription}
+ * Attach listener to a certain event name.
+ *
+ * @param eventName - Name of the event to listen to
+ * @param listener - Function to invoke only once when the
+ *   specified event is emitted
+ * @param context - Optional context object to use when invoking the
+ *   listener
  */
-BluetoothSerial.addListener = (eventName, handler) =>
-  DeviceEventEmitter.addListener(eventName, handler);
+BluetoothSerial.addListener = (eventName, handler, context) =>
+  DeviceEventEmitter.addListener(eventName, handler, context);
 
 /**
- * Listen for available events
- * @param  {String} eventName
- * @param  {Function} handler Event handler
- * @return {EmitterSubscription}
+ * Attach listener to a certain event name.
+ *
+ * @param eventName - Name of the event to listen to
+ * @param listener - Function to invoke only once when the
+ *   specified event is emitted
+ * @param context - Optional context object to use when invoking the
+ *   listener
  */
-BluetoothSerial.on = (eventName, handler) =>
-  DeviceEventEmitter.addListener(eventName, handler);
+BluetoothSerial.on = (eventName, handler, context) =>
+  DeviceEventEmitter.addListener(eventName, handler, context);
 
 /**
- * Remove subscription event
- * @param {EmitterSubscription} subscription
+ * Removes a specific subscription. Called by the `remove()` method of the
+ * subscription itself to ensure any necessary cleanup is performed.
  */
 BluetoothSerial.removeSubscription = subscription =>
   DeviceEventEmitter.removeSubscription(subscription);
 
 /**
- * Stop listening for event
- * @param  {String} eventName
- * @param  {Function} handler Event handler
+ * Removes the given listener for event of specific type.
+ *
+ * @param eventName - Name of the event to emit
+ * @param listener - Function to invoke when the specified event is
+ *   emitted
+ *
+ * @example
+ *   emitter.removeListener('someEvent', function(message) {
+ *     console.log(message);
+ *   }); // removes the listener if already registered
+ *
  */
-BluetoothSerial.removeListener = (eventName, handler) =>
-  DeviceEventEmitter.removeListener(eventName, handler);
+BluetoothSerial.removeListener = (eventName, handler, context) =>
+  DeviceEventEmitter.removeListener(eventName, handler, context);
 
 /**
- * Stop listening for event
- * @param  {String} eventName
- * @param  {Function} handler Event handler
+ * Removes the given listener for event of specific type.
+ *
+ * @param eventName - Name of the event to emit
+ * @param listener - Function to invoke when the specified event is
+ *   emitted
+ *
+ * @example
+ *   emitter.removeListener('someEvent', function(message) {
+ *     console.log(message);
+ *   }); // removes the listener if already registered
+ *
  */
 BluetoothSerial.off = (eventName, handler) =>
   DeviceEventEmitter.removeListener(eventName, handler);
 
 /**
- * Stop all listeners for event
- * @param  {String} eventName
+ * Removes all of the registered listeners, including those registered as
+ * listener maps.
+ *
+ * @param eventName - Optional name of the event whose registered
+ *   listeners to remove
  */
 BluetoothSerial.removeAllListeners = eventName =>
   DeviceEventEmitter.removeAllListeners(eventName);
 
 /**
- * Listen and read data from device
+ * Listen and read data from device.
+ *
  * @param {Function} [callback=() => {}]
  * @param {String} [delimiter=""]
  */
 BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
-  console.log(delimiter);
   BluetoothSerial.withDelimiter(delimiter).then(() => {
-    const subscriptionId = BluetoothSerial.on("read", data => {
-      callback(data, subscriptionId);
+    const subscription = BluetoothSerial.on("read", data => {
+      callback(data, subscription);
     });
   });
 };
 
 /**
- * Read data from device once
+ * Read data from device once.
+ *
  * @param  {String} [delimiter=""]
  * @return {Promise<String>}
  */
@@ -142,7 +172,8 @@ BluetoothSerial.readOnce = (delimiter = "") =>
     : BluetoothSerial.readFromDevice();
 
 /**
- * Read data from device every n ms
+ * Read data from device every n ms.
+ *
  * @param {Function} [callback=() => {}]
  * @param {Number} [ms=1000]
  * @param {String} [delimiter=""]
@@ -152,11 +183,11 @@ BluetoothSerial.readEvery = (
   ms = 1000,
   delimiter = ""
 ) => {
-  const intervalId = setInterval(() => {
+  const intervalId = setInterval(async () => {
     const data =
       typeof delimiter === "string"
-        ? BluetoothSerial.readUntilDelimiter(delimiter)
-        : BluetoothSerial.readFromDevice();
+        ? await BluetoothSerial.readUntilDelimiter(delimiter)
+        : await BluetoothSerial.readFromDevice();
 
     callback(data, intervalId);
   }, ms);
@@ -164,7 +195,8 @@ BluetoothSerial.readEvery = (
 
 /**
  * Write data to device, you can pass string or buffer,
- * We must convert to base64 in RN there is no way to pass buffer directly
+ * We must convert to base64 in RN there is no way to pass buffer directly.
+ *
  * @param  {Buffer|String} data
  * @return {Promise<Boolean>}
  */
@@ -175,7 +207,6 @@ BluetoothSerial.write = data => {
   return BluetoothSerial.writeToDevice(data.toString("base64"));
 };
 
-// Alias
 BluetoothSerial.discoverUnpairedDevice = BluetoothSerial.listUnpaired;
 BluetoothSerial.stopScanning = BluetoothSerial.cancelDiscovery;
 
