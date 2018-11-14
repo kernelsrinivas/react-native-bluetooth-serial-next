@@ -141,16 +141,6 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 @property (assign, nonatomic) NSUInteger peripheralsCountToStop;
 
 /*!
- * Indicates if active peripheral is connected.
- */
-@property (assign, nonatomic, getter = isConnected) BOOL connected;
-
-/**
- * Indicates if CBCentralManager is scanning for peripherals
- */
-@property (nonatomic, getter = isScanning) BOOL scanning;
-
-/*!
  * Indicates if central manager is ready for core bluetooth tasks. KVO observable.
  */
 @property (assign, nonatomic, readonly, getter = isCentralReady) BOOL centralReady;
@@ -166,6 +156,11 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 + (NSSet *)keyPathsForValuesAffectingCentralReady;
 
 + (NSSet *)keyPathsForValuesAffectingCentralNotReadyReason;
+
+/*!
+ * Getter
+ */
+- (BOOL)isConnected;
 
 /*!
  *  @method peripheralToDictionary

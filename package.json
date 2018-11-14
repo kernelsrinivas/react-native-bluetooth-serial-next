@@ -21,6 +21,7 @@
   },
   "homepage": "https://github.com/nuttawutmalee/react-native-bluetooth-serial-next#readme",
   "dependencies": {
+    "@babel/runtime": "^7.1.5",
     "buffer": "^4.6.0"
   },
   "peerDependencies": {

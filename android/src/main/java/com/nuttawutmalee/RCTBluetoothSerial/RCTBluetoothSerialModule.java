@@ -1,6 +1,5 @@
 package com.nuttawutmalee.RCTBluetoothSerial;
 
-import java.io.ByteArrayOutputStream;
 import java.lang.reflect.Method;
 import java.util.Set;
 import javax.annotation.Nullable;
@@ -12,8 +11,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.util.Log;
 import android.util.Base64;
@@ -28,8 +25,6 @@ import com.facebook.react.bridge.WritableMap;
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.modules.core.DeviceEventManagerModule;
-
-import zj.com.customize.sdk.Other;
 
 import static com.nuttawutmalee.RCTBluetoothSerial.RCTBluetoothSerialPackage.TAG;
 
@@ -329,21 +324,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
 
     @ReactMethod
     /**
-     * Is discovering?
-     */
-    public void isDiscovering(Promise promise) {
-        if (D) Log.d(TAG, "Is discovering called");
-
-        if (mBluetoothAdapter != null) {
-            promise.resolve(mBluetoothAdapter.isDiscovering());
-        } else {
-            rejectNullBluetoothAdapter(promise);
-        }
-    }
-
-
-    @ReactMethod
-    /**
      * Cancel discovery
      */
     public void cancelDiscovery(Promise promise) {
@@ -462,20 +442,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
         mBluetoothService.write(data);
         promise.resolve(true);
     }
-
-    @ReactMethod
-    /**
-     * Write base64 image string to device over serial port
-     */
-    public void writeBase64ImageToDevice(String message, Promise promise) {
-        if (D) Log.d(TAG, "Write base64 image " + message);
-        String base64Image = message.split(",")[1];
-        Bitmap bitmap = base64ToBitmap(base64Image);
-        byte[] data = POSPrintBitmap(bitmap, 384, 0);
-        mBluetoothService.write(data);
-        promise.resolve(true);
-    }
-
 
     /**********************/
     /** Read from device **/
@@ -741,50 +707,6 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
         Log.e(TAG, "Bluetooth adapter not found");
         promise.reject(e);
         onError(e);
-    }
-
-    /**
-     * Convert base64 string to bitmap
-     * @param content Base64 string
-     */
-    private Bitmap base64ToBitmap(String content) {
-        byte[] imageAsBytes = Base64.decode(content.getBytes(), Base64.DEFAULT);
-        return BitmapFactory.decodeByteArray(imageAsBytes, 0, imageAsBytes.length);
-    }
-
-    /**
-     * Convert bitmap to base64 string to
-     * @param bitmap Bitmap image
-     */
-    private String bitmapToBase64(Bitmap bitmap) {
-        ByteArrayOutputStream byteArrayOutputStream = new ByteArrayOutputStream();
-        bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteArrayOutputStream);
-        byte[] byteArray = byteArrayOutputStream .toByteArray();
-        return Base64.encodeToString(byteArray, Base64.DEFAULT);
-    }
-
-    /**
-     * Print bitmap bytes
-     * @param mBitmap
-     * @param nWidth
-     * @param nMode
-     */
-    private byte[] POSPrintBitmap(Bitmap mBitmap, int nWidth, int nMode) {
-        int width = (nWidth + 7) / 8 * 8;
-        int height = mBitmap.getHeight() * width / mBitmap.getWidth();
-        height = (height + 7) / 8 * 8;
-
-        Bitmap rszBitmap = mBitmap;
-        if(mBitmap.getWidth() != width) {
-            rszBitmap = Other.resizeImage(mBitmap, width, height);
-        }
-
-        Bitmap grayBitmap = Other.toGrayscale(rszBitmap);
-
-        byte[] dithered = Other.thresholdToBWPic(grayBitmap);
-        byte[] data = Other.eachLinePixToCmd(dithered, width, nMode);
-
-        return data;
     }
 
     /**

@@ -12,9 +12,9 @@
  */
 
 #import "RCTBluetoothSerial.h"
-#import "PrinterSDK.h"
 
 @implementation RCTBluetoothSerial
+
 
 RCT_EXPORT_MODULE();
 
@@ -29,7 +29,7 @@ RCT_EXPORT_MODULE();
     self = [super init];
     if (self) {
         _buffer = [[NSMutableString alloc] init];
-        _delimiter = [[NSMutableString alloc] init];
+        _delimiter = [[NSMutableString alloc] initWithString:@""];
         _doesHaveListeners = FALSE;
         
         _ble = [[BLE alloc] init];
@@ -45,13 +45,9 @@ RCT_EXPORT_MODULE();
     return dispatch_get_main_queue();
 }
 
-/*----------------------------------------------------*/
-#pragma mark - Getter/Setter -
-/*----------------------------------------------------*/
-
-- (BOOL)hasListeners
++ (BOOL)requiresMainQueueSetup
 {
-    return self.doesHaveListeners;
+    return YES;
 }
 
 /*----------------------------------------------------*/
@@ -62,13 +58,11 @@ RCT_EXPORT_MODULE();
 RCT_EXPORT_METHOD(requestEnable:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    NSLog(@"%@", @"Request enable called");
-    
-    if (!self.ble.isCentralReady) {
-        [self.ble centralManagerSetup];
-    }
-    
-    resolve((id)kCFBooleanTrue);
+    // Apple does not support programmatically requesting enable central manager
+    NSString *message = @"Require enable bluetooth service; Apple does not support this function";
+    NSError *error = [NSError errorWithDomain:@"no_support" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
+    reject(@"", message, error);
+    [self onError:message];
 }
 
 RCT_EXPORT_METHOD(enable:(RCTPromiseResolveBlock)resolve
@@ -124,27 +118,13 @@ RCT_EXPORT_METHOD(listUnpaired:(RCTPromiseResolveBlock)resolve
     }];
 }
 
-RCT_EXPORT_METHOD(isDiscovering:(RCTPromiseResolveBlock)resolve
-                  rejector:(RCTPromiseRejectBlock)reject)
-{
-    NSLog(@"Is discovering called");
-    
-    if (self.ble.isScanning) {
-        resolve((id)kCFBooleanTrue);
-    } else {
-        resolve((id)kCFBooleanFalse);
-    }
-}
-
 RCT_EXPORT_METHOD(cancelDiscovery:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
     NSLog(@"Cancel discovery called");
     
-    if (self.ble.isScanning) {
-        [self.ble stopScanForPeripherals];
-    }
-    
+    [self.ble stopScanForPeripherals];
+
     resolve((id)kCFBooleanTrue);
 }
 
@@ -238,10 +218,10 @@ RCT_EXPORT_METHOD(withDelimiter:(NSString *)delimiter
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
-    NSLog(@"Set delimiter to %@", delimiter);
+    NSLog(@"Change delimiter from %@ to %@", self.delimiter, delimiter);
     
-    if (delimiter != (NSString *)[NSNull init]) {
-        self.delimiter = [delimiter copy];
+    if (!delimiter) {
+        [self.delimiter setString:delimiter];
     }
     
     resolve((id)kCFBooleanTrue);
@@ -280,8 +260,9 @@ RCT_EXPORT_METHOD(writeToDevice:(NSString *)message
 {
     NSLog(@"Write to device : %@", message);
     
-    if (message != (NSString *)[NSNull init]) {
-        NSData *data = [[NSData alloc] initWithBase64EncodedString:message options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    NSData *data = [[NSData alloc] initWithBase64EncodedString:message options:NSDataBase64DecodingIgnoreUnknownCharacters];
+    
+    if ([data length] > 0) {
         [self.ble write:data];
     } else {
         NSLog(@"Data was null");
@@ -289,24 +270,6 @@ RCT_EXPORT_METHOD(writeToDevice:(NSString *)message
     
     resolve((id)kCFBooleanTrue);
 }
-
-RCT_EXPORT_METHOD(writeBase64ImageToDevice:(NSString *)message
-                  resolver:(RCTPromiseResolveBlock)resolve
-                  rejector:(RCTPromiseRejectBlock)reject)
-{
-    NSLog(@"Write base64 image to device : %@", message);
-    
-    if (message != (NSString *)[NSNull init]) {
-        UIImage *image = [self base64StringToImage:message];
-        NSData *data = [self POSPrintImage:image width:384];
-        [self.ble write:data];
-    } else {
-        NSLog(@"Data was null");
-    }
-    
-    resolve((id)kCFBooleanTrue);
-}
-
 
 RCT_EXPORT_METHOD(readFromDevice:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
@@ -352,7 +315,7 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
         if ([peripherals count] < 1) {
             [self onError:@"Did not find any BLE peripherals"];
         } else {
-            if ((uuid == (NSString *)[NSNull null]) | [uuid isEqualToString:@""]) {
+            if (([uuid length] < 0) | [uuid isEqualToString:@""]) {
                 // First device found
                 peripheral = [peripherals objectAtIndex:0];
             } else {
@@ -405,53 +368,12 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
 - (void)onError:(NSString *)message
 {
     NSLog(@"%@", message);
-    [self sendEventWithName:@"error" body:@{@"message":message}];
+    
+    if (self.doesHaveListeners) {
+        [self sendEventWithName:@"error" body:@{@"message":message}];
+    }
 }
 
-- (NSString *)imageToBase64String:(UIImage *)image {
-    return [UIImagePNGRepresentation(image) base64EncodedStringWithOptions:NSDataBase64EncodingEndLineWithCarriageReturn];
-}
-
-- (UIImage *)base64StringToImage:(NSString *)base64 {
-    NSData *data = [[NSData alloc]initWithBase64EncodedString:base64 options:NSDataBase64DecodingIgnoreUnknownCharacters];
-    return [UIImage imageWithData:data];
-}
-
-- (NSData *)POSPrintImage:(UIImage *)image width:(NSUInteger)nWidth
-{
-    CGImageRef imageRef = [image CGImage];
-    
-    // Defind width and height
-    NSUInteger width = (nWidth + 7) / 8 * 8;
-    NSUInteger height = CGImageGetHeight(imageRef) * width / CGImageGetWidth(imageRef);
-    
-    height = (height + 7) / 8 * 8;
-    
-    // Craete grayscale color space
-    CGColorSpaceRef colorSpace = CGColorSpaceCreateDeviceGray();
-    
-    // Get raw data
-    NSMutableData *data = [[NSMutableData alloc] initWithCapacity:height * width * 4];
-    unsigned char *rawData = data.mutableBytes;
-    
-    // Create context to draw image
-    NSUInteger bytesPerPixel = 4;
-    NSUInteger bytesPerRow = bytesPerPixel * width;
-    NSUInteger bitsPerComponent = 8;
-    CGContextRef context = CGBitmapContextCreate(rawData, width, height, bitsPerComponent, bytesPerRow, colorSpace, kCGImageAlphaPremultipliedLast | kCGBitmapByteOrder32Big);
-
-    CGColorSpaceRelease(colorSpace);
-    
-    // Draw image
-    CGContextDrawImage(context, CGRectMake(0, 0, width, height), imageRef);
-    
-    CGContextRelease(context);
-    
-    NSData *newData = UIImageJPEGRepresentation([[UIImage alloc] initWithCGImage:imageRef], 1);
-    
-    return newData;
-}
-    
 /*----------------------------------------------------*/
 #pragma mark - Timers -
 /*----------------------------------------------------*/
@@ -473,12 +395,16 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
 
 - (void)didPowerOn
 {
-    [self sendEventWithName:@"bluetoothEnabled" body:nil];
+    if (self.doesHaveListeners) {
+        [self sendEventWithName:@"bluetoothEnabled" body:nil];
+    }
 }
 
 - (void)didPowerOff
 {
-    [self sendEventWithName:@"bluetoothDisabled" body:nil];
+    if (self.doesHaveListeners) {
+        [self sendEventWithName:@"bluetoothDisabled" body:nil];
+    }
 }
 
 - (void)didConnect:(CBPeripheral *)peripheral
@@ -494,8 +420,10 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
     
     NSLog(@"%@", message);
     
-    [self sendEventWithName:@"connectionSuccess" body:@{@"message":message, @"device":device}];
-    
+    if (self.doesHaveListeners) {
+        [self sendEventWithName:@"connectionSuccess" body:@{@"message":message, @"device":device}];
+    }
+
     if (self.connectionResolver) {
         self.connectionResolver(device);
     }
@@ -514,8 +442,10 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
     
     NSLog(@"%@", message);
     
-    [self sendEventWithName:@"connectionFailed" body:@{@"message":message, @"device":device}];
-    
+    if (self.doesHaveListeners) {
+        [self sendEventWithName:@"connectionFailed" body:@{@"message":message, @"device":device}];
+    }
+
     self.connectionResolver = nil;
     self.connectionRejector = nil;
 }
@@ -533,8 +463,10 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
     
     NSLog(@"%@", message);
     
-    [self sendEventWithName:@"connectionLost" body:@{@"message":message, @"device":device}];
-    
+    if (self.doesHaveListeners) {
+        [self sendEventWithName:@"connectionLost" body:@{@"message":message, @"device":device}];
+    }
+
     self.connectionResolver = nil;
     self.connectionRejector = nil;
 }
@@ -555,8 +487,10 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
         NSString *message = [self readUntil:self.delimiter];
         
         if ([message length] > 0) {
-            [self sendEventWithName:@"read" body:@{@"data":message}];
-            [self sendEventWithName:@"data" body:@{@"data":message}];
+            if (self.doesHaveListeners) {
+                [self sendEventWithName:@"read" body:@{@"data":message}];
+                [self sendEventWithName:@"data" body:@{@"data":message}];
+            }
         }
     } else {
         [self onError:@"Error converting received data into a string"];

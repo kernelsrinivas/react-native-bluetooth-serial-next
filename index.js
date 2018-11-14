@@ -2,10 +2,8 @@ const ReactNative = require("react-native");
 const React = require("react");
 const { Buffer } = require("buffer");
 
-const { NativeModules, NativeEventEmitter } = ReactNative;
+const { NativeModules, DeviceEventEmitter } = ReactNative;
 const { BluetoothSerial } = NativeModules;
-
-const DeviceEventEmitter = new NativeEventEmitter(BluetoothSerial);
 
 /**
  * High order component that will
@@ -20,7 +18,7 @@ const DeviceEventEmitter = new NativeEventEmitter(BluetoothSerial);
  * @param  {Boolean}  [options.destroyOnWilUnmount=true]
  * @return {React.Component}
  */
-const withSubscription = (
+export const withSubscription = (
   options = {
     subscriptionName: "subscription",
     destroyOnWilUnmount: true
@@ -35,38 +33,26 @@ const withSubscription = (
       ? options.destroyOnWilUnmount
       : true;
 
+  let emitter = DeviceEventEmitter;
+  emitter.on = DeviceEventEmitter.addListener;
+  emitter.off = DeviceEventEmitter.removeListener;
+  emitter.remove = DeviceEventEmitter.removeAllListeners;
+
   return class RTCBluetoothSerialComponent extends React.Component {
-    constructor(props) {
-      super(props);
-      this.subscription = null;
-    }
-
-    componentDidMount() {
-      this.subscription = new NativeEventEmitter(BluetoothSerial);
-      this.subscription.on = this.subscription.addListener;
-      this.subscription.off = this.subscription.removeListener;
-    }
-
     componentWillUnmount() {
-      if (destroyOnWilUnmount) {
-        this.subscription &&
-          typeof this.subscription.remove === "function" &&
-          this.subscription.remove();
+      const subscription = this.props[subscriptionName];
 
-        this.subscription &&
-          typeof this.subscription.removeAllListeners === "functions" &&
-          this.subscription.removeAllListeners();
+      if (destroyOnWilUnmount && subscription) {
+        typeof subscription.remove === "function" && subscription.remove();
 
-        this.subscription = null;
+        typeof subscription.removeAllListeners === "functions" &&
+          subscription.removeAllListeners();
       }
     }
 
     render() {
       return (
-        <WrappedComponent
-          {...this.props}
-          {...{ [subscriptionName]: this.subscription }}
-        >
+        <WrappedComponent {...this.props} {...{ [subscriptionName]: emitter }}>
           {this.props.children}
         </WrappedComponent>
       );
@@ -98,7 +84,8 @@ BluetoothSerial.addListener = (eventName, handler) =>
  * @param  {Function} handler Event handler
  * @return {EmitterSubscription}
  */
-BluetoothSerial.on = DeviceEventEmitter.addListener;
+BluetoothSerial.on = (eventName, handler) =>
+  DeviceEventEmitter.addListener(eventName, handler);
 
 /**
  * Remove subscription event
@@ -120,7 +107,8 @@ BluetoothSerial.removeListener = (eventName, handler) =>
  * @param  {String} eventName
  * @param  {Function} handler Event handler
  */
-BluetoothSerial.off = DeviceEventEmitter.removeListener;
+BluetoothSerial.off = (eventName, handler) =>
+  DeviceEventEmitter.removeListener(eventName, handler);
 
 /**
  * Stop all listeners for event
@@ -135,6 +123,7 @@ BluetoothSerial.removeAllListeners = eventName =>
  * @param {String} [delimiter=""]
  */
 BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
+  console.log(delimiter);
   BluetoothSerial.withDelimiter(delimiter).then(() => {
     const subscriptionId = BluetoothSerial.on("read", data => {
       callback(data, subscriptionId);
@@ -186,23 +175,8 @@ BluetoothSerial.write = data => {
   return BluetoothSerial.writeToDevice(data.toString("base64"));
 };
 
-/**
- * Write base64 image to device, you can pass string or buffer
- * We must convert to base64 in RN there is no way to pass buffer directly
- * @param  {Buffer|String} data
- * @return {Promise<Boolean>}
- */
-BluetoothSerial.writeBase64Image = data => {
-  if (typeof data === "string") {
-    data = new Buffer(data);
-  }
-  return BluetoothSerial.writeBase64ImageToDevice(data.toString("base64"));
-};
-
 // Alias
 BluetoothSerial.discoverUnpairedDevice = BluetoothSerial.listUnpaired;
-BluetoothSerial.isScanning = BluetoothSerial.isDiscovering;
 BluetoothSerial.stopScanning = BluetoothSerial.cancelDiscovery;
 
-exports.withSubscription = withSubscription;
-module.exports = BluetoothSerial;
+export default BluetoothSerial;

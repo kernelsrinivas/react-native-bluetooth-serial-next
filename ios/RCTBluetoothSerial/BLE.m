@@ -17,6 +17,7 @@
 
 @implementation BLE
 
+static BOOL connected = FALSE;
 static int rssi = 0;
 static const int MAX_BUFFER_LENGTH = 100;
 
@@ -60,7 +61,7 @@ CBUUID *writeCharacteristicUUID;
 
 - (BOOL)isConnected
 {
-    return self.connected;
+    return connected;
 }
 
 - (BOOL)isCentralReady
@@ -70,7 +71,7 @@ CBUUID *writeCharacteristicUUID;
 
 - (BOOL)isScanning
 {
-    return self.scanning;
+    return connected;
 }
 
 - (NSArray *)peripherals
@@ -254,8 +255,6 @@ CBUUID *writeCharacteristicUUID;
 
 - (void)stopScanForPeripherals
 {
-    self.scanning = FALSE;
-    
     [self.manager stopScan];
     
     [NSObject cancelPreviousPerformRequestsWithTarget:self
@@ -301,8 +300,6 @@ CBUUID *writeCharacteristicUUID;
 
 -(void)scanForPeripheralsByServices
 {
-    self.scanning = TRUE;
-    
     // Clear all peripherals
     [self.scannedPeripherals removeAllObjects];
     
@@ -577,10 +574,10 @@ characteristicUUID:(CBUUID *)characteristicUUID
         [[self delegate] didPowerOn];
     } else {
         [[self delegate] didPowerOff];
-        
-        if (self.isConnected) {
+
+        if (connected) {
             [[self delegate] didConnectionLost:self.activePeripheral];
-            self.connected = FALSE;
+            connected = FALSE;
         }
     }
 #else
@@ -623,7 +620,7 @@ didFailToConnectPeripheral:(CBPeripheral *)peripheral
 didDisconnectPeripheral:(CBPeripheral *)peripheral
                 error:(NSError *)error
 {
-    self.connected = FALSE;
+    connected = FALSE;
     
     if ([self UUIDSAreEqual:self.activePeripheral.identifier UUID2:peripheral.identifier]) {
         self.activePeripheral = nil;
@@ -708,10 +705,10 @@ didDiscoverCharacteristicsForService:(CBService *)service
             
             CBService *s = [peripheral.services objectAtIndex:(peripheral.services.count - 1)];
             
-            if ([service.UUID isEqual:s.UUID] & self.isCentralReady & !self.connected) {
+            if ([service.UUID isEqual:s.UUID] & self.isCentralReady & !connected) {
                 [self enableReadNotification:self.activePeripheral];
                 [[self delegate] didConnect:peripheral];
-                self.connected = TRUE;
+                connected = TRUE;
             }
         }
     }
@@ -803,7 +800,7 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
 
 - (void)peripheralDidUpdateRSSI:(CBPeripheral *)peripheral error:(NSError *)error
 {
-    if (!self.connected) {
+    if (!self.isConnected) {
         return;
     }
     
@@ -820,7 +817,7 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
        didReadRSSI:(NSNumber *)RSSI
              error:(NSError *)error
 {
-    if (!self.connected) {
+    if (!self.isConnected) {
         return;
     }
 #pragma clang diagnostic push

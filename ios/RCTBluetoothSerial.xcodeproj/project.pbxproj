@@ -11,7 +11,6 @@
 		69CA06091CC43C2900AF6479 /* RCTBluetoothSerial.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06081CC43C2900AF6479 /* RCTBluetoothSerial.m */; };
 		69CA06161CC49D5E00AF6479 /* BLE.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06101CC49D5E00AF6479 /* BLE.m */; };
 		69CA06171CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m in Sources */ = {isa = PBXBuildFile; fileRef = 69CA06131CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m */; };
-		9950535821998436006A7453 /* PrinterSDK.h in Sources */ = {isa = PBXBuildFile; fileRef = 9950535721998436006A7453 /* PrinterSDK.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -37,8 +36,6 @@
 		69CA06111CC49D5E00AF6479 /* BLEDefines.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = BLEDefines.h; sourceTree = "<group>"; };
 		69CA06121CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "CBPeripheral+BTSExtensions.h"; sourceTree = "<group>"; };
 		69CA06131CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "CBPeripheral+BTSExtensions.m"; sourceTree = "<group>"; };
-		9950535721998436006A7453 /* PrinterSDK.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = PrinterSDK.h; path = "../../../Downloads/ZIJIANG PRINT BITMAP/IOS SDK/PrinterDemo/PrinterDemo/PrinterSDK/PrinterSDK.h"; sourceTree = "<group>"; };
-		996C0CF12195F3DF00A2A171 /* PrinterSDK */ = {isa = PBXFileReference; lastKnownFileType = folder; name = PrinterSDK; path = "../../../../Downloads/ZIJIANG PRINT BITMAP/IOS SDK/PrinterDemo/PrinterDemo/PrinterSDK"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -57,7 +54,6 @@
 			children = (
 				69CA06051CC43C2900AF6479 /* RCTBluetoothSerial */,
 				69CA06041CC43C2900AF6479 /* Products */,
-				9950535621998436006A7453 /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -72,7 +68,6 @@
 		69CA06051CC43C2900AF6479 /* RCTBluetoothSerial */ = {
 			isa = PBXGroup;
 			children = (
-				996C0CF12195F3DF00A2A171 /* PrinterSDK */,
 				69CA060F1CC49D5E00AF6479 /* BLE.h */,
 				69CA06101CC49D5E00AF6479 /* BLE.m */,
 				69CA06111CC49D5E00AF6479 /* BLEDefines.h */,
@@ -82,14 +77,6 @@
 				69CA06081CC43C2900AF6479 /* RCTBluetoothSerial.m */,
 			);
 			path = RCTBluetoothSerial;
-			sourceTree = "<group>";
-		};
-		9950535621998436006A7453 /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				9950535721998436006A7453 /* PrinterSDK.h */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -151,7 +138,6 @@
 				69CA06091CC43C2900AF6479 /* RCTBluetoothSerial.m in Sources */,
 				69CA06161CC49D5E00AF6479 /* BLE.m in Sources */,
 				69CA06171CC49D5E00AF6479 /* CBPeripheral+BTSExtensions.m in Sources */,
-				9950535821998436006A7453 /* PrinterSDK.h in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -31,7 +31,7 @@ typedef void (^RCTBluetoothSerialPeripheralCallback) (CBPeripheral *_Nullable pe
 /*!
  * Indicates if there are at least one listeners from RCTEventEmitter.
  */
-@property (assign, nonatomic, getter = hasListeners) BOOL doesHaveListeners;
+@property (assign, nonatomic) BOOL doesHaveListeners;
 
 /*!
  * Buffer from active peripheral read value.
