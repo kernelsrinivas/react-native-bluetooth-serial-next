@@ -97,6 +97,9 @@ class Example extends Component {
       this.setState({ connected: false, device: null });
     });
 
+    // Read / Data
+    // BluetoothSerial.on('data', () => {});
+    // BluetoothSerial.on('read', () => {});
     BluetoothSerial.read((data, subscriptionId) => {
       console.log(`Data read from connected device : ${data}`);
 
