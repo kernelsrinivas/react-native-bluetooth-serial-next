@@ -244,7 +244,7 @@ Listen and read data from connected device.
 BluetoothSerial.read((data, subscription) => {
   console.log(data);
 
-  if (this.imBoredNow) {
+  if (this.imBoredNow && subscription) {
     BluetoothSerial.removeSubscription(subscription);
   }
 }, "\r\n");
@@ -413,26 +413,13 @@ await BluetoothSerial.withDelimiter("\r\n");
 
 ##### + addListener(eventName, handler)
 
-##### + off(eventName, handler);
+##### + off(eventName, handler)
 
 ##### + removeListener(eventName, handler)
 
 ##### + removeAllListeners(eventName?)
 
 ##### + removeSubscription(subscription)
-
-## Events
-
-You can listen to few event with `BluetoothSerial.on(eventName, callback)` or `BluetoothSerial.addListener(eventName, callback)`
-
-Currently provided events are:
-
-- `bluetoothEnabled` - when user enabled bluetooth
-- `bluetoothDisabled` - when user disabled bluetooth
-- `connectionSuccess` - when app connected to the device
-- `connectionLost` - when app lost connection to the device (fired with `bluetoothDisabled`)
-
-You can use `BluetoothSerial.off(eventName, callback)` or `BluetoothSerial.removeListener(eventName, callback)` to stop listening to an event
 
 ## Todos
 
