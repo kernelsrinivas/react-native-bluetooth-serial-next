@@ -97,7 +97,7 @@ declare namespace BluetoothSerial {
    * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
-  export function disconnect(): Proimise<boolean>;
+  export function disconnect(): Promise<boolean>;
 
   /**
    * Indicates if you are connected with active bluetooth device / peripheral or not.
@@ -179,7 +179,7 @@ declare namespace BluetoothSerial {
    */
   export function unpairDevice(
     id: string
-  ): Proimise<AndroidBluetoothDevice | iOSBluetoothDevice>;
+  ): Promise<AndroidBluetoothDevice | iOSBluetoothDevice>;
 
   /**
    * Listen and read data from connected device.
