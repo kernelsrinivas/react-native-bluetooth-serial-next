@@ -61,6 +61,158 @@ export const withSubscription = (
 };
 
 /**
+ * Select a specific bluetooth device and
+ * give you the ability to read / write from
+ * that device.
+ *
+ * @param {String}  id
+ * @return {Object}
+ */
+BluetoothSerial.device = id => ({
+  /**
+   * Connect to certain bluetooth device / peripheral.
+   *
+   * @throws this will throws an error if android bluetooth adapter
+   *         is missing.
+   */
+  connect: () => BluetoothSerial.connect(id),
+
+  /**
+   * Disconnect from the selected bluetooth device / peripheral.
+   *
+   * @return {Promise<Boolean>}
+   *
+   * @throws this will throws an error if android bluetooth adapter
+   *         is missing.
+   */
+  disconnect: () => BluetoothSerial.disconnect(id),
+
+  /**
+   * Indicates if you are connected to the selected bluetooth device / peripheral or not.
+   *
+   * @return {Promise<Boolean>}
+   */
+  isConnected: () => BluetoothSerial.isConnected(id),
+
+  /**
+   * Clear all buffer data of the selected bluetooth device / peripheral.
+   *
+   * @return {Promise<Boolean>}
+   */
+  clear: () => BluetoothSerial.clear(id),
+
+  /**
+   * Get length of buffer data from the selected bluetooth device / peripheral.
+   *
+   * @return {Promise<Number>}
+   */
+  available: () => BluetoothSerial.available(id),
+
+  /**
+   * Set delimiter split the buffer data
+   * when you are reading from the selected device.
+   *
+   * @param delimiter
+   * @return {Promise<Boolean>}
+   */
+  withDelimiter: delimiter => BluetoothSerial.withDelimiter(delimiter, id),
+
+  /**
+   * Set the selected bluetooth adapter a new name.
+   *
+   * @param name
+   * @return {Promise<String>}
+   *
+   * @throws this will throws an error in iOS because it does not
+   *         support this function or if android bluetooth adapter
+   *         is missing.
+   */
+  setAdapterName: name => BluetoothSerial.setAdapterName(name, id),
+
+  /**
+   * Listen and read data from the selected device.
+   *
+   * @param {Function} [callback=() => {}]
+   * @param {String} [delimiter=""]
+   */
+  read: (callback = () => {}, delimiter = "") => {
+    BluetoothSerial.withDelimiter(delimiter, id).then(() => {
+      const subscription = BluetoothSerial.addListener("read", data => {
+        callback(data, subscription);
+      });
+    });
+  },
+
+  /**
+   * Read data from the selected device once.
+   *
+   * @param  {String} [delimiter=""]
+   * @return {Promise<String>}
+   */
+  readOnce: (delimiter = "") =>
+    typeof delimiter === "string"
+      ? BluetoothSerial.readUntilDelimiter(delimiter, id)
+      : BluetoothSerial.readFromDevice(id),
+
+  /**
+   * Read data from the selected device every n ms.
+   *
+   * @param {Function} [callback=() => {}]
+   * @param {Number} [ms=1000]
+   * @param {String} [delimiter=""]
+   */
+  readEvery: (callback = () => {}, ms = 1000, delimiter = "") => {
+    const intervalId = setInterval(async () => {
+      const data =
+        typeof delimiter === "string"
+          ? await BluetoothSerial.readUntilDelimiter(delimiter, id)
+          : await BluetoothSerial.readFromDevice(id);
+
+      callback(data, intervalId);
+    }, ms);
+  },
+
+  /**
+   * Read all buffer data up to particular delimiter
+   * from the selected device.
+   *
+   * @param delimiter
+   * @return {Promise<String>}
+   */
+  readUntilDelimiter: delimiter =>
+    BluetoothSerial.readUntilDelimiter(delimiter, id),
+
+  /**
+   * Read all buffer data from connected device.
+   *
+   * @return {Promise<String>}
+   */
+  readFromDevice: () => BluetoothSerial.readFromDevice(id),
+
+  /**
+   * Write data to the selected device, you can pass string or buffer,
+   * We must convert to base64 in RN there is no way to pass buffer directly.
+   *
+   * @param  {Buffer|String} data
+   * @return {Promise<Boolean>}
+   */
+  write: data => {
+    if (typeof data === "string") {
+      data = new Buffer(data);
+    }
+    return BluetoothSerial.writeToDevice(data.toString("base64"), id);
+  },
+
+  /**
+   * Write string to the selected device.
+   *
+   * @param {String} data
+   * @return {Promise<Boolean>}
+   */
+  writeToDevice: data => BluetoothSerial.writeToDevice(data)
+});
+
+/**
  * Similar to addListener, except that the listener is removed after it is
  * invoked once.
  *
@@ -198,13 +350,14 @@ BluetoothSerial.readEvery = (
  * We must convert to base64 in RN there is no way to pass buffer directly.
  *
  * @param  {Buffer|String} data
+ * @param  {String} id Device id or uuid
  * @return {Promise<Boolean>}
  */
-BluetoothSerial.write = data => {
+BluetoothSerial.write = (data, id) => {
   if (typeof data === "string") {
     data = new Buffer(data);
   }
-  return BluetoothSerial.writeToDevice(data.toString("base64"));
+  return BluetoothSerial.writeToDevice(data.toString("base64"), id);
 };
 
 BluetoothSerial.discoverUnpairedDevices = BluetoothSerial.listUnpaired;

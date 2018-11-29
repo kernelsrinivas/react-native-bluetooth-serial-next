@@ -34,14 +34,14 @@ typedef void (^RCTBluetoothSerialPeripheralCallback) (CBPeripheral *_Nullable pe
 @property (assign, nonatomic) BOOL doesHaveListeners;
 
 /*!
- * Buffer from active peripheral read value.
+ * Dictionary of buffer from each active peripherals read value.
  */
-@property (strong, nonatomic) NSMutableString *buffer;
+@property (strong, nonatomic) NSMutableDictionary *buffers;
 
 /*!
- * Certain delimiter to indicate the end of sliced buffer.
+ * Dictionary of certain delimiter to indicate the end of sliced buffer.
  */
-@property (strong, nonatomic) NSMutableString *delimiter;
+@property (strong, nonatomic) NSMutableDictionary *delimiters;
 
 /*!
  * Resolver block for connection related function.

@@ -77,23 +77,22 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (void)didConnectionLost:(CBPeripheral *) peripheral;
 
 /*!
+ *  @method didMultipleConnectionLost
+ *
+ *  @param peripherals   The connected peripherals.
+ *
+ */
+- (void)didMultipleConnectionLost:(NSMutableArray *) peripherals;
+
+/*!
  *  @method didReceiveData:length:
  *
+ *  @param uuid     The UUID string of the peripheral.
  *  @param data     The received data from peripheral buffer.
  *  @param length   The length of received data.
  *
  */
-- (void)didReceiveData:(unsigned char *) data length:(NSInteger) length;
-
-@optional
-
-/*!
- *  @method didUpdateRSSI
- *
- *  @param rssi The updated RSSI number.
- *
- */
-- (void)didUpdateRSSI:(NSNumber *)rssi;
+- (void)didReceiveData:(NSString *)uuid data:(unsigned char *) data length:(NSInteger) length;
 
 @end
 
@@ -114,19 +113,19 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 @property (strong, nonatomic) CBCentralManager *manager;
 
 /*!
- * Peripherals that are nearby (sorted descending by RSSI values)
+ * Peripherals that are nearby (sorted descending by RSSI values).
  */
 @property (weak, nonatomic, readonly) NSArray *peripherals;
 
 /*!
- * List of scanned peripherals
+ * List of scanned peripherals.
  */
 @property (strong, nonatomic) NSMutableArray *scannedPeripherals;
 
 /*!
- * The active peripheral that has been paired and connected.
+ * The active peripherals that each has been paired and connected.
  */
-@property (strong, nonatomic) CBPeripheral *activePeripheral;
+@property (strong, nonatomic) NSMutableDictionary *activePeripherals;
 
 /*!
  * CBCentralManager's state updated by centralManagerDidUpdateState:
@@ -158,14 +157,19 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 + (NSSet *)keyPathsForValuesAffectingCentralNotReadyReason;
 
 /*!
- * Getter
+ *  @method isConnected
+ *
+ *  @param uuid
+ *
+ *  @discussion Indicates selected peripheral connection status.
+ *
  */
-- (BOOL)isConnected;
+- (BOOL)isConnected:(NSString *)uuid;
 
 /*!
  *  @method peripheralToDictionary
  *
- *  @param peripheral CBPeripheral
+ *  @param peripheral
  *
  *  @discussion Get NSMutableDictionary info of a peripheral.
  *
@@ -175,11 +179,13 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 /*!
  *  @method readActivePeripheralRSSI
  *
+ *  @param uuid CBPeripheral id.
+ *
  *  @discussion Retrieves and delegate current RSSI of current
  *              active peripheral that connected to central manager.
  *
  */
-- (void)readActivePeripheralRSSI;
+- (void)readActivePeripheralRSSI:(NSString *)uuid.
 
 /*!
  *  @method enableReadNotification
@@ -193,21 +199,24 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 /*!
  *  @method read
  *
+ *  @param uuid Id of one of the active peripherals.
+ *
  *  @discussion Read value from active peripheral
  *              for a certain characteristic.
  */
-- (void)read;
+- (void)read:(NSString *)uuid;
 
 /*!
  *  @method write
  *
+ *  @param uuid Id of one of the active peripherals.
  *  @param data Data to be written to an active peripheral.
  *
  *  @discussion Write value to active peripheral
  *              for a certain characteristic.
  *
  */
-- (void)write:(NSData *)data;
+- (void)write:(NSString *)uuid data:(NSData *)data;
 
 /*!
  *  @method scanForPeripheralsByInterval
@@ -244,15 +253,13 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (void)connectToPeripheral:(CBPeripheral *)peripheral;
 
 /*!
- *  @method disconnectToPeripheral
+ *  @method disconnectFromPeripheral
  *
  *  @param peripheral
  *
- *  @discussion Cancel connect of a certain peripheral.
- *
  */
 
-- (void)disconnectToPeripheral:(CBPeripheral *)peripheral;
+- (void)disconnectFromPeripheral:(CBPeripheral *)peripheral;
 
 /*!
  *  @method centralManagerSetup
@@ -261,5 +268,13 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  *
  */
 - (void)centralManagerSetup;
+
+/*!
+ *  @method getActivePeripheral
+ *
+ *  @discussion Get active peripheral from uuid or the first connected one.
+ *
+ */
+- (CBPeripheral *)getActivePeripheral:(NSString *)uuid;
 
 @end

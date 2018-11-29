@@ -22,7 +22,7 @@ export type Buffer = (data: number[]) => void;
 export function withSubscription(options: {
   subscriptionName?: string;
   destroyOnWillUnmount?: boolean;
-}): React.Component;
+}): (WrappedComponent: React.Component) => React.Component;
 
 // tslint:disable-next-line:export-just-namespace
 export = BluetoothSerial;
@@ -94,15 +94,19 @@ declare namespace BluetoothSerial {
   /**
    * Disconnect from connected bluetooth device / peripheral.
    *
+   * @param id Device id or uuid
+   *
    * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
-  export function disconnect(): Promise<boolean>;
+  export function disconnect(id?: string): Promise<boolean>;
 
   /**
-   * Indicates if you are connected with active bluetooth device / peripheral or not.
+   * Indicates if you are connected to the active bluetooth device / peripheral or not.
+   *
+   * @param id Device id or uuid
    */
-  export function isConnected(): Promise<boolean>;
+  export function isConnected(id?: string): Promise<boolean>;
 
   /**
    * List all paired (android) / connected (ios) bluetooth devices.
@@ -217,16 +221,22 @@ declare namespace BluetoothSerial {
 
   /**
    * Read all buffer data from connected device.
+   *
+   * @param id Device id or uuid
    */
-  export function readFromDevice(): Promise<string>;
+  export function readFromDevice(id?: string): Promise<string>;
 
   /**
    * Read all buffer data up to particular delimiter
    * from connected device.
    *
    * @param delimiter
+   * @param id Device id or uuid
    */
-  export function readUntiDelimiter(delimiter: string): Promise<string>;
+  export function readUntilDelimiter(
+    delimiter: string,
+    id?: string
+  ): Promise<string>;
 
   /**
    * Write data to device, you can pass string or buffer,
@@ -234,44 +244,178 @@ declare namespace BluetoothSerial {
    * because there is no way to pass buffer directly.
    *
    * @param data
+   * @param id Device id or uuid
    */
-  export function write(data: Buffer | string): Promise<boolean>;
+  export function write(data: Buffer | string, id?: string): Promise<boolean>;
 
   /**
    * Write string to device.
    *
    * @param data
+   * @param id Device id or uuid
    */
-  export function writeToDevice(data: string): Promise<boolean>;
+  export function writeToDevice(data: string, id?: string): Promise<boolean>;
 
   /**
    * Clear all buffer data.
+   *
+   * @param id Device id or uuid
    */
-  export function clear(): Promise<boolean>;
+  export function clear(id?: string): Promise<boolean>;
 
   /**
    * Get length of buffer data.
+   *
+   * @param id Device id or uuid
    */
-  export function available(): Promise<number>;
+  export function available(id?: string): Promise<number>;
 
   /**
    * Set bluetooth adapter a new name.
    *
    * @param name
+   * @param id Device id or uuid
    *
    * @throws this will throws an error in iOS because it does not
    *         support this function or if android bluetooth adapter
    *         is missing.
    */
-  export function setAdapterName(name: string): Promise<string>;
+  export function setAdapterName(name: string, id?: string): Promise<string>;
 
   /**
    * Set delimiter split the buffer data
    * when you are reading from device.
    *
    * @param delimiter
+   * @param id Device id or uuid
    */
-  export function withDelimiter(delimiter: string): Promise<boolean>;
+  export function withDelimiter(
+    delimiter: string,
+    id?: string
+  ): Promise<boolean>;
+
+  /**
+   * Select a specific bluetooth device and
+   * give you the ability to read / write from
+   * that device.
+   *
+   * @param {String} id Device id or uuid
+   */
+  export function device(
+    id?: string
+  ): {
+    /**
+     * Connect to certain bluetooth device / peripheral.
+     *
+     * @throws this will throws an error if android bluetooth adapter
+     *         is missing.
+     */
+    connect(): Promise<AndroidBluetoothDevice | iOSBluetoothDevice>;
+
+    /**
+     * Disconnect from the selected bluetooth device / peripheral.
+     *
+     * @throws this will throws an error if android bluetooth adapter
+     *         is missing.
+     */
+    disconnect: () => Promise<boolean>;
+
+    /**
+     * Indicates if you are connected to the selected bluetooth device / peripheral or not.
+     */
+    isConnected: () => Promise<boolean>;
+
+    /**
+     * Clear all buffer data of the selected bluetooth device / peripheral.
+     */
+    clear: () => Promise<boolean>;
+
+    /**
+     * Get length of buffer data from the selected bluetooth device / peripheral.
+     */
+    available: () => Promise<number>;
+
+    /**
+     * Set the selected bluetooth adapter a new name.
+     *
+     * @param name
+     *
+     * @throws this will throws an error in iOS because it does not
+     *         support this function or if android bluetooth adapter
+     *         is missing.
+     */
+    setAdapterName: (name: string) => Promise<string>;
+
+    /**
+     * Set delimiter split the buffer data
+     * when you are reading from the selected device.
+     *
+     * @param delimiter
+     */
+    withDelimiter: (delimiter: string) => Promise<boolean>;
+
+    /**
+     * Listen and read data from the selected device.
+     *
+     * @param callback
+     * @param delimiter
+     */
+    read: (
+      callback: (
+        data: string,
+        subscription: ReactNative.EmitterSubscription
+      ) => {},
+      delimiter?: string
+    ) => void;
+
+    /**
+     * Read data from the selected device once.
+     *
+     * @param delimiter
+     */
+    readOnce: (delimiter?: string) => Promise<string>;
+
+    /**
+     * Read data from the selected device every n ms.
+     *
+     * @param callback
+     * @param ms
+     * @param delimiter
+     */
+    readEvery: (
+      callback: (data: string, intervalId: number) => {},
+      ms?: number,
+      delimiter?: string
+    ) => void;
+
+    /**
+     * Read all buffer data up to particular delimiter
+     * from the selected device.
+     *
+     * @param delimiter
+     */
+    readUntilDelimiter: (delimiter: string) => Promise<string>;
+
+    /**
+     * Read all buffer data from connected device.
+     */
+    readFromDevice: () => Promise<string>;
+
+    /**
+     * Write data to the selected device, you can pass string or buffer,
+     * We must convert to base64 in RN there is no way to pass buffer directly.
+     *
+     * @param data
+     */
+    write: (data: Buffer | string) => Promise<boolean>;
+
+    /**
+     * Write string to the selected device.
+     *
+     * @param data
+     */
+    writeToDevice: (data: string) => Promise<boolean>;
+  };
 
   /**
    * Similar to addListener, except that the listener is removed after it is

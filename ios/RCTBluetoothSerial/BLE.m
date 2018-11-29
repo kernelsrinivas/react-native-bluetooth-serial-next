@@ -17,8 +17,6 @@
 
 @implementation BLE
 
-static BOOL connected = FALSE;
-static int rssi = 0;
 static const int MAX_BUFFER_LENGTH = 100;
 
 // TODO should have a configurable list of services
@@ -48,6 +46,7 @@ CBUUID *writeCharacteristicUUID;
 {
     self = [super init];
     if (self) {
+        _activePeripherals = [NSMutableDictionary dictionary];
         _scannedPeripherals = [NSMutableArray new];
         _peripheralsCountToStop = NSUIntegerMax;
         _manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:CBCentralManagerOptionShowPowerAlertKey]];
@@ -59,19 +58,9 @@ CBUUID *writeCharacteristicUUID;
 #pragma mark - Getter/Setter -
 /*----------------------------------------------------*/
 
-- (BOOL)isConnected
-{
-    return connected;
-}
-
 - (BOOL)isCentralReady
 {
     return (self.manager.state == CBCentralManagerStatePoweredOn);;
-}
-
-- (BOOL)isScanning
-{
-    return connected;
 }
 
 - (NSArray *)peripherals
@@ -89,7 +78,6 @@ CBUUID *writeCharacteristicUUID;
 /*----------------------------------------------------*/
 #pragma mark - KVO -
 /*----------------------------------------------------*/
-
 
 + (NSSet *)keyPathsForValuesAffectingCentralReady
 {
@@ -129,9 +117,17 @@ CBUUID *writeCharacteristicUUID;
     return result;
 }
 
-- (void)readActivePeripheralRSSI
+- (void)readActivePeripheralRSSI:(NSString *)uuid
 {
-    [self.activePeripheral readRSSI];
+    NSMutableDictionary *dict = [self getFirstPeripheralDictionary:uuid];
+    
+    if (dict) {
+        CBPeripheral *peripheral = [dict objectForKey:@"peripheral"];
+        
+        if (peripheral) {
+            [peripheral readRSSI];
+        }
+    }
 }
 
 - (void)enableReadNotification:(CBPeripheral *)peripheral
@@ -169,15 +165,38 @@ CBUUID *writeCharacteristicUUID;
     [peripheral setNotifyValue:YES forCharacteristic:characteristic];
 }
 
-- (void)read
+- (BOOL)isConnected:(NSString *)uuid
 {
-    CBService *service = [self findServiceFromUUID:serialServiceUUID peripheral:self.activePeripheral];
+    NSMutableDictionary *dict = [self getFirstPeripheralDictionary:uuid];
+    
+    if (dict) {
+        return (BOOL)[dict valueForKey:@"connected"];
+    }
+    
+    return FALSE;
+}
+
+- (void)read:(NSString *)uuid
+{
+    CBPeripheral *peripheral = [self getActivePeripheral:uuid];
+    
+    if (!peripheral) {
+        NSString *message = [NSString stringWithFormat:@"Could not find active peripheral with UUID %@", uuid];
+        NSLog(@"%@", message);
+        
+        NSError *error = [NSError errorWithDomain:@"no_peripheral" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
+        [[self delegate] didError:error];
+        
+        return;
+    }
+    
+    CBService *service = [self findServiceFromUUID:serialServiceUUID peripheral:peripheral];
     
     if (!service) {
         NSString *message = [NSString stringWithFormat:
                              @"Could not find service with UUID %@ on peripheral with UUID %@",
                              [self CBUUIDToString:serialServiceUUID],
-                             self.activePeripheral.identifier.UUIDString];
+                             peripheral.identifier.UUIDString];
         NSLog(@"%@", message);
         
         NSError *error = [NSError errorWithDomain:@"no_service" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
@@ -193,7 +212,7 @@ CBUUID *writeCharacteristicUUID;
                              @"Could not find characteristic with UUID %@ on service with UUID %@ on peripheral with UUID %@",
                              [self CBUUIDToString:readCharacteristicUUID],
                              [self CBUUIDToString:serialServiceUUID],
-                             self.activePeripheral.identifier.UUIDString];
+                             peripheral.identifier.UUIDString];
         NSLog(@"%@", message);
         
         NSError *error = [NSError errorWithDomain:@"no_characteristic" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
@@ -202,24 +221,36 @@ CBUUID *writeCharacteristicUUID;
         return;
     }
     
-    [self.activePeripheral readValueForCharacteristic:characteristic];
+    [peripheral readValueForCharacteristic:characteristic];
 }
 
-- (void)write:(NSData *)data
+- (void)write:(NSString *)uuid data:(NSData *)data
 {
-    NSLog(@"Write in ble.m\n");
+    CBPeripheral *peripheral = [self getActivePeripheral:uuid];
+
+    if (!peripheral) {
+        NSString *message = [NSString stringWithFormat:@"Could not find active peripheral with UUID %@", uuid];
+        NSLog(@"%@", message);
+        
+        NSError *error = [NSError errorWithDomain:@"no_peripheral" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
+        [[self delegate] didError:error];
+        
+        return;
+    }
+    
+    NSLog(@"Write data to peripheral with UUID %@", uuid);
     
     NSInteger dataLength = data.length;
     NSData *buffer;
     
-    for(int i = 0; i < dataLength; i += MAX_BUFFER_LENGTH) {
+    for (int i = 0; i < dataLength; i += MAX_BUFFER_LENGTH) {
         NSInteger remainLength = dataLength - i;
         NSInteger bufferLength = (remainLength > MAX_BUFFER_LENGTH) ? MAX_BUFFER_LENGTH : remainLength;
         buffer = [data subdataWithRange:NSMakeRange(i, bufferLength)];
         
         NSLog(@"Buffer data %li %i %@", (long)remainLength, i, [[NSString alloc] initWithData:buffer encoding:NSUTF8StringEncoding]);
         
-        [self writeValue:serialServiceUUID characteristicUUID:writeCharacteristicUUID peripheral:self.activePeripheral data:buffer];
+        [self writeValue:serialServiceUUID characteristicUUID:writeCharacteristicUUID peripheral:peripheral data:buffer];
     }
 }
 
@@ -276,13 +307,27 @@ CBUUID *writeCharacteristicUUID;
 {
     NSLog(@"Connecting to peripheral with UUID : %@", peripheral.identifier.UUIDString);
     
-    self.activePeripheral = peripheral;
-    self.activePeripheral.delegate = self;
+    CBPeripheral *activePeripheral = [peripheral copy];
     
-    [self.manager connectPeripheral:self.activePeripheral options:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:CBConnectPeripheralOptionNotifyOnDisconnectionKey]];
+    activePeripheral.delegate = self;
+    
+    NSMutableDictionary *dict = [NSMutableDictionary dictionary];
+    
+    [dict setValue:[NSNumber numberWithBool:FALSE] forKey:@"connected"];
+    [dict setObject:activePeripheral forKey:@"peripheral"];
+    
+    if ([self.activePeripherals count] <= 0) {
+        [dict setValue:[NSNumber numberWithBool:TRUE] forKey:@"first"];
+    } else {
+        [dict setValue:[NSNumber numberWithBool:FALSE] forKey:@"first"];
+    }
+    
+    [self.activePeripherals setObject:dict forKey:activePeripheral.identifier.UUIDString];
+
+    [self.manager connectPeripheral:activePeripheral options:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:CBConnectPeripheralOptionNotifyOnDisconnectionKey]];
 }
 
-- (void)disconnectToPeripheral:(CBPeripheral *)peripheral
+- (void)disconnectFromPeripheral:(CBPeripheral *)peripheral
 {
     NSLog(@"Disconnecting peripheral with UUID : %@", peripheral.identifier.UUIDString);
     
@@ -292,6 +337,17 @@ CBUUID *writeCharacteristicUUID;
 - (void)centralManagerSetup
 {
     self.manager = [[CBCentralManager alloc] initWithDelegate:self queue:nil options:[NSDictionary dictionaryWithObject:[NSNumber numberWithBool:YES] forKey:CBCentralManagerOptionShowPowerAlertKey]];
+}
+
+- (CBPeripheral *)getActivePeripheral:(NSString *)uuid
+{
+    NSMutableDictionary *dict = [self getFirstPeripheralDictionary:uuid];
+    
+    if (dict) {
+        return (CBPeripheral *)[dict objectForKey:@"peripheral"];
+    }
+    
+    return nil;
 }
 
 /*----------------------------------------------------*/
@@ -482,7 +538,7 @@ characteristicUUID:(CBUUID *)characteristicUUID
     }
 }
 
--(CBUUID *)IntToCBUUID:(UInt16)UUID
+- (CBUUID *)IntToCBUUID:(UInt16)UUID
 {
     char t[16];
     t[0] = ((UUID >> 8) & 0xff); t[1] = (UUID & 0xff);
@@ -558,6 +614,30 @@ characteristicUUID:(CBUUID *)characteristicUUID
     NSLog(@"-------------------------------------");
 }
 
+- (NSMutableDictionary *)getFirstPeripheralDictionary:(NSString *)uuid
+{
+    NSMutableDictionary *dict = nil;
+    
+    if (([uuid length] <= 0) | [uuid isEqualToString:@""] | [uuid isKindOfClass:[NSNull class]]) {
+        for (NSString *key in self.activePeripherals) {
+            NSMutableDictionary *d = [self.activePeripherals objectForKey:key];
+            
+            if (!d) {
+                continue;
+            }
+            
+            if ((BOOL)[d valueForKey:@"first"]) {
+                dict = [d copy];
+                break;
+            }
+        }
+    } else if ([[self.activePeripherals allKeys] containsObject:uuid]) {
+        dict = [[self.activePeripherals objectForKey:uuid] copy];
+    }
+
+    return dict;
+}
+
 /*----------------------------------------------------*/
 #pragma mark - Central Manager Delegate -
 /*----------------------------------------------------*/
@@ -574,10 +654,31 @@ characteristicUUID:(CBUUID *)characteristicUUID
         [[self delegate] didPowerOn];
     } else {
         [[self delegate] didPowerOff];
-
-        if (connected) {
-            [[self delegate] didConnectionLost:self.activePeripheral];
-            connected = FALSE;
+        
+        if ([self.activePeripherals count] == 1) {
+            NSString *key = [[self.activePeripherals allKeys] objectAtIndex:0];
+            NSMutableDictionary *dict = [self.activePeripherals objectForKey:key];
+            
+            if (dict) {
+                CBPeripheral *peripheral = [dict objectForKey:@"peripheral"];
+                [[self delegate] didConnectionLost:peripheral];
+            }
+        } else if ([self.activePeripherals count] > 1) {
+            NSMutableArray *connectedPeripherals = [[NSMutableArray alloc] init];
+            
+            for (NSString *key in self.activePeripherals) {
+                NSMutableDictionary *dict = [self.activePeripherals objectForKey:key];
+                
+                if (!dict) {
+                    continue;
+                }
+                
+                if ((BOOL)[dict valueForKey:@"connected"]) {
+                    [connectedPeripherals addObject:[dict objectForKey:@"peripheral"]];
+                }
+            }
+            
+            [[self delegate] didMultipleConnectionLost:connectedPeripherals];
         }
     }
 #else
@@ -587,52 +688,55 @@ characteristicUUID:(CBUUID *)characteristicUUID
 
 - (void)centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
 {
-    if (peripheral.identifier != NULL) {
-        NSLog(@"Connected to %@ successful", peripheral.identifier.UUIDString);
-    } else {
-        NSLog(@"Connected to NULL successful");
-    }
+    NSLog(@"Connected to %@ successful", peripheral.identifier.UUIDString);
+
+    NSMutableDictionary *dict = [self.activePeripherals objectForKey:peripheral.identifier.UUIDString];
     
-    self.activePeripheral = peripheral;
-    [self.activePeripheral discoverServices:nil];
+    if (dict) {
+        [dict setObject:peripheral forKey:@"peripheral"];
+        [self.activePeripherals setObject:dict forKey:peripheral.identifier.UUIDString];
+    }
+
+    [peripheral discoverServices:nil];
 }
 
 - (void)centralManager:(CBCentralManager *)central
 didFailToConnectPeripheral:(CBPeripheral *)peripheral
                  error:(NSError *)error
 {
-    if (peripheral.identifier != NULL) {
-        NSLog(@"Failed to connect to %@", peripheral.identifier.UUIDString);
-    } else {
-        NSLog(@"Failed to connect to NULL");
+    NSMutableDictionary *dict = [self.activePeripherals objectForKey:peripheral.identifier.UUIDString];
+    
+    if (dict) {
+        CBPeripheral *activePeripheral = [dict objectForKey:@"peripheral"];
+        activePeripheral.delegate = nil;
+        [self.activePeripherals removeObjectForKey:peripheral.identifier.UUIDString];
     }
     
+    NSLog(@"Failed to connect to %@", peripheral.identifier.UUIDString);
+
     if (error) {
         NSString *message = [error localizedDescription];
         NSLog(@"%@", message);
         [[self delegate] didError:error];
     }
-    
+
     [[self delegate] didFailToConnect:peripheral];
 }
 
--(void)centralManager:(CBCentralManager *)central
+- (void)centralManager:(CBCentralManager *)central
 didDisconnectPeripheral:(CBPeripheral *)peripheral
                 error:(NSError *)error
 {
-    connected = FALSE;
+    NSMutableDictionary *dict = [self.activePeripherals objectForKey:peripheral.identifier.UUIDString];
     
-    if ([self UUIDSAreEqual:self.activePeripheral.identifier UUID2:peripheral.identifier]) {
-        self.activePeripheral = nil;
-        self.activePeripheral.delegate = nil;
+    if (dict) {
+        CBPeripheral *activePeripheral = [dict objectForKey:@"peripheral"];
+        activePeripheral.delegate = nil;
+        [self.activePeripherals removeObjectForKey:peripheral.identifier.UUIDString];
     }
     
-    if (peripheral.identifier != NULL) {
-        NSLog(@"Disconnected to %@ successful", peripheral.identifier.UUIDString);
-    } else {
-        NSLog(@"Disconnected to NULL successful");
-    }
-    
+    NSLog(@"Disconnected to %@ successful", peripheral.identifier.UUIDString);
+
     if (error) {
         NSString *message = [error localizedDescription];
         NSLog(@"%@", message);
@@ -696,19 +800,35 @@ didDiscoverCharacteristicsForService:(CBService *)service
         
         NSError *error = [NSError errorWithDomain:@"no_characteristic_discovery" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
         [[self delegate] didError:error];
-    } else {
-        NSLog(@"Characteristics of service with UUID : %@ found\n", [self CBUUIDToString:service.UUID]);
         
-        for (int i = 0; i < service.characteristics.count; i++) {
-            CBCharacteristic *characteristic = [service.characteristics objectAtIndex:i];
-            NSLog(@"Found characteristic %@\n", [self CBUUIDToString:characteristic.UUID]);
+        return;
+    }
+    
+    NSLog(@"Characteristics of service with UUID : %@ found\n", [self CBUUIDToString:service.UUID]);
+
+    BOOL connected = FALSE;
+
+    for (int i = 0; i < service.characteristics.count; i++) {
+        CBCharacteristic *characteristic = [service.characteristics objectAtIndex:i];
+        NSLog(@"Found characteristic %@\n", [self CBUUIDToString:characteristic.UUID]);
+
+        CBService *s = [peripheral.services objectAtIndex:(peripheral.services.count - 1)];
+        
+        if ([service.UUID isEqual:s.UUID] & self.isCentralReady & !connected) {
+            CBPeripheral *activePeripheral;
+            NSMutableDictionary *dict = [self.activePeripherals objectForKey:peripheral.identifier.UUIDString];
             
-            CBService *s = [peripheral.services objectAtIndex:(peripheral.services.count - 1)];
-            
-            if ([service.UUID isEqual:s.UUID] & self.isCentralReady & !connected) {
-                [self enableReadNotification:self.activePeripheral];
-                [[self delegate] didConnect:peripheral];
-                connected = TRUE;
+            if (dict) {
+                activePeripheral = [dict objectForKey:@"peripheral"];
+                
+                if (activePeripheral) {
+                    connected = TRUE;
+                    
+                    [self enableReadNotification:activePeripheral];
+                    [[self delegate] didConnect:activePeripheral];
+                    [dict setValue:[NSNumber numberWithBool:TRUE] forKey:@"connected"];
+                    [self.activePeripherals setObject:dict forKey:peripheral.identifier.UUIDString];
+                }
             }
         }
     }
@@ -724,15 +844,17 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
         
         NSError *error = [NSError errorWithDomain:@"no_characteristic_update" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
         [[self delegate] didError:error];
-    } else {
-        static unsigned char buffer[512];
-        NSInteger dataLength;
         
-        if ([characteristic.UUID isEqual:readCharacteristicUUID]) {
-            dataLength = characteristic.value.length;
-            [characteristic.value getBytes:buffer length:dataLength];
-            [[self delegate] didReceiveData:buffer length:dataLength];
-        }
+        return;
+    }
+    
+    static unsigned char buffer[512];
+    NSInteger dataLength;
+
+    if ([characteristic.UUID isEqual:readCharacteristicUUID]) {
+        dataLength = characteristic.value.length;
+        [characteristic.value getBytes:buffer length:dataLength];
+        [[self delegate] didReceiveData:peripheral.identifier.UUIDString data:buffer length:dataLength];
     }
 }
 
@@ -744,89 +866,60 @@ didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic
         
         NSError *error = [NSError errorWithDomain:@"no_service_discovery" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
         [[self delegate] didError:error];
-    } else {
-        // TODO - Allow customized read/write characteristic
-        // Determine if we're connected to Red Bear Labs, Adafruit or Laird hardware
-        for (CBService *service in peripheral.services) {
-            if ([service.UUID isEqual:redBearLabsServiceUUID]) {
-                NSLog(@"RedBearLabs Bluetooth");
-                serialServiceUUID = redBearLabsServiceUUID;
-                readCharacteristicUUID = [CBUUID UUIDWithString:@RBL_CHAR_TX_UUID];
-                writeCharacteristicUUID = [CBUUID UUIDWithString:@RBL_CHAR_RX_UUID];
-                break;
-            } else if ([service.UUID isEqual:adafruitServiceUUID]) {
-                NSLog(@"Adafruit Bluefruit LE");
-                serialServiceUUID = adafruitServiceUUID;
-                readCharacteristicUUID = [CBUUID UUIDWithString:@ADAFRUIT_CHAR_TX_UUID];
-                writeCharacteristicUUID = [CBUUID UUIDWithString:@ADAFRUIT_CHAR_RX_UUID];
-                break;
-            } else if ([service.UUID isEqual:lairdServiceUUID]) {
-                NSLog(@"Laird BL600");
-                serialServiceUUID = lairdServiceUUID;
-                readCharacteristicUUID = [CBUUID UUIDWithString:@LAIRD_CHAR_TX_UUID];
-                writeCharacteristicUUID = [CBUUID UUIDWithString:@LAIRD_CHAR_RX_UUID];
-                break;
-            } else if ([service.UUID isEqual:blueGigaServiceUUID]) {
-                NSLog(@"BlueGiga Bluetooth");
-                serialServiceUUID = blueGigaServiceUUID;
-                readCharacteristicUUID = [CBUUID UUIDWithString:@BLUEGIGA_CHAR_TX_UUID];
-                writeCharacteristicUUID = [CBUUID UUIDWithString:@BLUEGIGA_CHAR_RX_UUID];
-                break;
-            } else if ([service.UUID isEqual:rongtaSerivceUUID]) {
-                NSLog(@"Rongta");
-                serialServiceUUID = rongtaSerivceUUID;
-                readCharacteristicUUID = [CBUUID UUIDWithString:@RONGTA_CHAR_TX_UUID];
-                writeCharacteristicUUID = [CBUUID UUIDWithString:@RONGTA_CHAR_RX_UUID];
-                break;
-            } else if ([service.UUID isEqual:posnetSerivceUUID]) {
-                NSLog(@"Posnet");
-                serialServiceUUID = posnetSerivceUUID;
-                readCharacteristicUUID = [CBUUID UUIDWithString:@POSNET_CHAR_TX_UUID];
-                writeCharacteristicUUID = [CBUUID UUIDWithString:@POSNET_CHAR_RX_UUID];
-                break;
-            } else {
-                // Ignore unknown services
-            }
-        }
         
-        // TODO - Future versions should just get characteristics we care about
-        // [peripheral discoverCharacteristics:characteristics forService:service];
-        for (int i = 0; i< peripheral.services.count; i++) {
-            CBService *s = [peripheral.services objectAtIndex:i];
-            [peripheral discoverCharacteristics:nil forService:s];
-        }
-    }
-}
-
-- (void)peripheralDidUpdateRSSI:(CBPeripheral *)peripheral error:(NSError *)error
-{
-    if (!self.isConnected) {
         return;
     }
     
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (rssi != peripheral.RSSI.intValue) {
-        rssi = peripheral.RSSI.intValue;
-        [[self delegate] didUpdateRSSI:self.activePeripheral.RSSI];
+    // TODO - Allow customized read/write characteristic
+    // Determine if we're connected to Red Bear Labs, Adafruit or Laird hardware
+    for (CBService *service in peripheral.services) {
+        if ([service.UUID isEqual:redBearLabsServiceUUID]) {
+            NSLog(@"RedBearLabs Bluetooth");
+            serialServiceUUID = redBearLabsServiceUUID;
+            readCharacteristicUUID = [CBUUID UUIDWithString:@RBL_CHAR_TX_UUID];
+            writeCharacteristicUUID = [CBUUID UUIDWithString:@RBL_CHAR_RX_UUID];
+            break;
+        } else if ([service.UUID isEqual:adafruitServiceUUID]) {
+            NSLog(@"Adafruit Bluefruit LE");
+            serialServiceUUID = adafruitServiceUUID;
+            readCharacteristicUUID = [CBUUID UUIDWithString:@ADAFRUIT_CHAR_TX_UUID];
+            writeCharacteristicUUID = [CBUUID UUIDWithString:@ADAFRUIT_CHAR_RX_UUID];
+            break;
+        } else if ([service.UUID isEqual:lairdServiceUUID]) {
+            NSLog(@"Laird BL600");
+            serialServiceUUID = lairdServiceUUID;
+            readCharacteristicUUID = [CBUUID UUIDWithString:@LAIRD_CHAR_TX_UUID];
+            writeCharacteristicUUID = [CBUUID UUIDWithString:@LAIRD_CHAR_RX_UUID];
+            break;
+        } else if ([service.UUID isEqual:blueGigaServiceUUID]) {
+            NSLog(@"BlueGiga Bluetooth");
+            serialServiceUUID = blueGigaServiceUUID;
+            readCharacteristicUUID = [CBUUID UUIDWithString:@BLUEGIGA_CHAR_TX_UUID];
+            writeCharacteristicUUID = [CBUUID UUIDWithString:@BLUEGIGA_CHAR_RX_UUID];
+            break;
+        } else if ([service.UUID isEqual:rongtaSerivceUUID]) {
+            NSLog(@"Rongta");
+            serialServiceUUID = rongtaSerivceUUID;
+            readCharacteristicUUID = [CBUUID UUIDWithString:@RONGTA_CHAR_TX_UUID];
+            writeCharacteristicUUID = [CBUUID UUIDWithString:@RONGTA_CHAR_RX_UUID];
+            break;
+        } else if ([service.UUID isEqual:posnetSerivceUUID]) {
+            NSLog(@"Posnet");
+            serialServiceUUID = posnetSerivceUUID;
+            readCharacteristicUUID = [CBUUID UUIDWithString:@POSNET_CHAR_TX_UUID];
+            writeCharacteristicUUID = [CBUUID UUIDWithString:@POSNET_CHAR_RX_UUID];
+            break;
+        } else {
+            // Ignore unknown services
+        }
     }
-#pragma clang diagnostic pop
-}
 
-- (void)peripheral:(CBPeripheral *)peripheral
-       didReadRSSI:(NSNumber *)RSSI
-             error:(NSError *)error
-{
-    if (!self.isConnected) {
-        return;
+    // TODO - Future versions should just get characteristics we care about
+    // [peripheral discoverCharacteristics:characteristics forService:service];
+    for (int i = 0; i< peripheral.services.count; i++) {
+        CBService *s = [peripheral.services objectAtIndex:i];
+        [peripheral discoverCharacteristics:nil forService:s];
     }
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    if (rssi != peripheral.RSSI.intValue) {
-        rssi = peripheral.RSSI.intValue;
-        [[self delegate] didUpdateRSSI:self.activePeripheral.RSSI];
-    }
-#pragma clang diagnostic pop
 }
 
 @end
