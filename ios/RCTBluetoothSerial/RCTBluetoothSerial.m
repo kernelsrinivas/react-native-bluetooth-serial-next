@@ -30,6 +30,7 @@ RCT_EXPORT_MODULE();
     if (self) {
         _buffers = [NSMutableDictionary dictionary];
         _delimiters = [NSMutableDictionary dictionary];
+        _connectionPromises = [NSMutableDictionary dictionary];
         _doesHaveListeners = FALSE;
         
         _ble = [[BLE alloc] init];
@@ -165,22 +166,21 @@ RCT_EXPORT_METHOD(connect:(NSString *)uuid
             }
         }
     }
-
-    self.connectionResolver = resolve;
-    self.connectionRejector = reject;
     
+    NSMutableDictionary *promises = [NSMutableDictionary dictionary];
+    [promises setObject:resolve forKey:@"resolver"];
+    [promises setObject:reject forKey:@"rejector"];
+    
+    [self.connectionPromises setObject:promises forKey:uuid];
+
     [NSObject cancelPreviousPerformRequestsWithTarget:self
                                              selector:@selector(findBLEPeripheralByUUID:completion:)
                                                object:nil];
     
     [self findBLEPeripheralByUUID:uuid completion:^(CBPeripheral *peripheral) {
         if (peripheral) {
-            if (peripheral.identifier) {
-                NSLog(@"Connecting to device (UUID : %@)", peripheral.identifier.UUIDString);
-            } else {
-                NSLog(@"Connecting to device (UUID : NULL)");
-            }
-            
+            NSLog(@"Connecting to device (UUID : %@)", peripheral.identifier.UUIDString);
+
             if (![[self.delimiters allKeys] containsObject:peripheral.identifier.UUIDString]) {
                 [self.delimiters setValue:[[NSMutableString alloc] initWithString:@""] forKey:peripheral.identifier.UUIDString];
             }
@@ -194,7 +194,7 @@ RCT_EXPORT_METHOD(connect:(NSString *)uuid
             NSString *message = [NSString stringWithFormat:@"Could not find peripheral %@.", uuid];
             NSError *err = [NSError errorWithDomain:@"wrong_uuid" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
             [self onError:message];
-            self.connectionRejector(@"wrong_uuid", message, err);
+            reject(@"wrong_uuid", message, err);
         }
     }];
 }
@@ -305,7 +305,6 @@ RCT_EXPORT_METHOD(available:(NSString *)uuid
 }
 
 RCT_EXPORT_METHOD(setAdapterName:(NSString *)name
-                  uuid:(NSString *)uuid
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
@@ -504,86 +503,59 @@ RCT_EXPORT_METHOD(readUntilDelimiter:(NSString *)delimiter
 
 - (void)didConnect:(CBPeripheral *)peripheral
 {
-    NSString *message;
     NSMutableDictionary *device = [self.ble peripheralToDictionary:peripheral];
-    
-    if (peripheral.identifier) {
-        message = [NSString stringWithFormat:@"Connected to BLE peripheral (UUID : %@)", peripheral.identifier.UUIDString];
-    } else {
-        message = @"Connected to BLE peripheral (UUID : NULL)";
-    }
+    NSString *message = [NSString stringWithFormat:@"Connected to BLE peripheral (UUID : %@)", peripheral.identifier.UUIDString];
     
     NSLog(@"%@", message);
     
     if (self.doesHaveListeners) {
         [self sendEventWithName:@"connectionSuccess" body:@{@"message":message, @"device":device}];
     }
-
-    if (self.connectionResolver) {
-        self.connectionResolver(device);
+    
+    if ([[self.connectionPromises allKeys] containsObject:peripheral.identifier.UUIDString]) {
+        NSMutableDictionary *dict = [self.connectionPromises objectForKey:peripheral.identifier.UUIDString];
+        RCTPromiseResolveBlock resolver = [dict objectForKey:@"resolver"];
+        
+        if (resolver) {
+            resolver(device);
+        }
     }
 }
 
 - (void)didFailToConnect:(CBPeripheral *)peripheral
 {
-    NSString *message;
     NSMutableDictionary *device = [self.ble peripheralToDictionary:peripheral];
-    
-    if (peripheral.identifier) {
-        message = [NSString stringWithFormat:@"Unable to connect to BLE peripheral (UUID : %@)", peripheral.identifier.UUIDString];
-    } else {
-        message = @"Unable to connect to BLE peripheral (UUID : NULL)";
-    }
-    
+    NSString *message = [NSString stringWithFormat:@"Unable to connect to BLE peripheral (UUID : %@)", peripheral.identifier.UUIDString];
+
     NSLog(@"%@", message);
     
     if (self.doesHaveListeners) {
         [self sendEventWithName:@"connectionFailed" body:@{@"message":message, @"device":device}];
     }
-
-    self.connectionResolver = nil;
-    self.connectionRejector = nil;
+    
+    if ([[self.connectionPromises allKeys] containsObject:peripheral.identifier.UUIDString]) {
+        NSMutableDictionary *dict = [self.connectionPromises objectForKey:peripheral.identifier.UUIDString];
+        RCTPromiseRejectBlock reject = [dict objectForKey:@"rejector"];
+        
+        if (reject) {
+            NSError *err = [NSError errorWithDomain:@"fail_to_connect" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
+            reject(@"wrong_uuid", message, err);
+        }
+    }
 }
 
 - (void)didConnectionLost:(CBPeripheral *)peripheral
 {
-    NSString *message;
     NSMutableDictionary *device = [self.ble peripheralToDictionary:peripheral];
-    
-    if (peripheral.identifier) {
-        message = [NSString stringWithFormat:@"BLE peripheral (UUID : %@) connection lost", peripheral.identifier.UUIDString];
-    } else {
-        message = @"BLE peripheral (UUID : NULL) connection lost";
-    }
+    NSString *message = [NSString stringWithFormat:@"BLE peripheral (UUID : %@) connection lost", peripheral.identifier.UUIDString];
     
     NSLog(@"%@", message);
     
     if (self.doesHaveListeners) {
-        [self sendEventWithName:@"connectionLost" body:@{@"message":message, @"device":device, @"devices":[NSMutableArray array]}];
+        [self sendEventWithName:@"connectionLost" body:@{@"message":message, @"device":device}];
     }
 
-    self.connectionResolver = nil;
-    self.connectionRejector = nil;
-}
-
-- (void)didMultipleConnectionLost:(NSMutableArray *)peripherals
-{
-    NSMutableArray *devices = [NSMutableArray array];
-    
-    if ([peripherals count] > 0) {
-        for (int i = 0; i < peripherals.count; i++) {
-            CBPeripheral *peripheral = [self.ble.peripherals objectAtIndex:i];
-            NSMutableDictionary *dict = [self.ble peripheralToDictionary:peripheral];
-            [devices addObject:dict];
-        }
-    }
-
-    if (self.doesHaveListeners) {
-        [self sendEventWithName:@"connectionLost" body:@{@"message":@"Multiple BLE peripherals connection lost", @"device":[NSNull null], @"devices":devices}];
-    }
-    
-    self.connectionResolver = nil;
-    self.connectionRejector = nil;
+    [self.connectionPromises removeObjectForKey:peripheral.identifier.UUIDString];
 }
 
 - (void)didReceiveData:(NSString *)uuid data:(unsigned char *)data length:(NSInteger)length

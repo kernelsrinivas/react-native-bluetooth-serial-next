@@ -77,14 +77,6 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
 - (void)didConnectionLost:(CBPeripheral *) peripheral;
 
 /*!
- *  @method didMultipleConnectionLost
- *
- *  @param peripherals   The connected peripherals.
- *
- */
-- (void)didMultipleConnectionLost:(NSMutableArray *) peripherals;
-
-/*!
  *  @method didReceiveData:length:
  *
  *  @param uuid     The UUID string of the peripheral.

@@ -274,13 +274,12 @@ declare namespace BluetoothSerial {
    * Set bluetooth adapter a new name.
    *
    * @param name
-   * @param id Device id or uuid
    *
    * @throws this will throws an error in iOS because it does not
    *         support this function or if android bluetooth adapter
    *         is missing.
    */
-  export function setAdapterName(name: string, id?: string): Promise<string>;
+  export function setAdapterName(name: string): Promise<string>;
 
   /**
    * Set delimiter split the buffer data
@@ -334,17 +333,6 @@ declare namespace BluetoothSerial {
      * Get length of buffer data from the selected bluetooth device / peripheral.
      */
     available: () => Promise<number>;
-
-    /**
-     * Set the selected bluetooth adapter a new name.
-     *
-     * @param name
-     *
-     * @throws this will throws an error in iOS because it does not
-     *         support this function or if android bluetooth adapter
-     *         is missing.
-     */
-    setAdapterName: (name: string) => Promise<string>;
 
     /**
      * Set delimiter split the buffer data

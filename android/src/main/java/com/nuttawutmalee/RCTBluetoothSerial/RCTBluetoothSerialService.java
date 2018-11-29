@@ -4,16 +4,15 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.os.Build;
-import android.text.TextUtils;
 import android.util.Log;
-
-import javax.annotation.Nullable;
 
 import static com.nuttawutmalee.RCTBluetoothSerial.RCTBluetoothSerialPackage.TAG;
 
@@ -35,10 +34,12 @@ class RCTBluetoothSerialService {
 
     // Member fields
     private BluetoothAdapter mAdapter;
-    private ConnectThread mConnectThread;
-    private ConnectedThread mConnectedThread;
     private RCTBluetoothSerialModule mModule;
-    private String mState;
+
+    private String mFirstDeviceAddress = null;
+    private HashMap<String, ConnectThread> mConnectThreads;
+    private HashMap<String, ConnectedThread> mConnectedThreads;
+    private HashMap<String, String> mStates;
 
     // Constants that indicate the current connection state
     private static final String STATE_NONE = "none"; // we're doing nothing
@@ -52,13 +53,24 @@ class RCTBluetoothSerialService {
      */
     RCTBluetoothSerialService(RCTBluetoothSerialModule module) {
         mAdapter = BluetoothAdapter.getDefaultAdapter();
-        mState = STATE_NONE;
         mModule = module;
+
+        if (mConnectThreads == null) {
+            mConnectThreads = new HashMap<>();
+        }
+
+        if (mConnectedThreads == null) {
+            mConnectedThreads = new HashMap<>();
+        }
+
+        if (mStates == null) {
+            mStates = new HashMap<>();
+        }
     }
 
-    /********************************************/
-    /** Methods available within whole package **/
-    /********************************************/
+    public String getFirstDeviceAddress() {
+        return mFirstDeviceAddress;
+    }
 
     /**
      * Start the ConnectThread to initiate a connection to a remote device.
@@ -68,39 +80,53 @@ class RCTBluetoothSerialService {
     synchronized void connect(BluetoothDevice device) {
         if (D) Log.d(TAG, "connect to: " + device);
 
-        cancelConnectThread(); // Cancel any thread attempting to make a connection
-        cancelConnectedThread(); // Cancel any thread currently running a connection
+        String id = device.getAddress();
+
+        cancelConnectThread(id); // Cancel any thread attempting to make a connection
+        cancelConnectedThread(id); // Cancel any thread currently running a connection
 
         // Start the thread to connect with the given device
-        mConnectThread = new ConnectThread(device);
-        mConnectThread.start();
-        setState(STATE_CONNECTING);
+        ConnectThread thread = new ConnectThread(device);
+        thread.start();
+
+        if (mConnectedThreads.isEmpty()) {
+            mFirstDeviceAddress = id;
+        }
+
+        mConnectThreads.put(id, thread);
+        mStates.put(id, STATE_CONNECTING);
     }
 
     /**
      * Check whether service is connected to device
-     * 
+     *
+     * @param id Device address
      * @return Is connected to device
      */
-    boolean isConnected() {
-        return getState().equals(STATE_CONNECTED);
+    boolean isConnected(String id) {
+        return mStates.containsKey(id) && getState(id).equals(STATE_CONNECTED);
     }
 
     /**
      * Write to the ConnectedThread in an unsynchronized manner
-     * 
+     *
+     * @param id Device address
      * @param out The bytes to write
      * @see ConnectedThread#write(byte[])
      */
-    void write(byte[] out) {
-        if (D) Log.d(TAG, "Write in service, state is " + STATE_CONNECTED);
-        ConnectedThread r; // Create temporary object
+    void write(String id, byte[] out) {
+        if (D) Log.d(TAG, "Write in service of device id " + id + ", state is " + STATE_CONNECTED);
+        ConnectedThread r = null; // Create temporary object
 
         // Synchronize a copy of the ConnectedThread
         synchronized (this) {
-            if (!isConnected())
+            if (!isConnected(id)) {
                 return;
-            r = mConnectedThread;
+            }
+
+            if (mConnectedThreads.containsKey(id)) {
+                r = mConnectedThreads.get(id);
+            }
         }
 
         if (r != null) {
@@ -112,34 +138,64 @@ class RCTBluetoothSerialService {
     }
 
     /**
-     * Stop all threads
+     * Stop threads of a specific device
+     *
+     * @param id Device address
      */
-    synchronized void stop() {
-        if (D) Log.d(TAG, "stop");
+    synchronized void stop(String id) {
+        if (D) Log.d(TAG, "Stop device id " + id);
 
-        cancelConnectThread();
-        cancelConnectedThread();
+        cancelConnectThread(id);
+        cancelConnectedThread(id);
 
-        setState(STATE_NONE);
+        mStates.put(id, STATE_NONE);
+
+        if (id == mFirstDeviceAddress) {
+            mFirstDeviceAddress = null;
+        }
     }
 
-    /*********************/
-    /** Private methods **/
-    /*********************/
+    /**
+     * Stop all threads of all devices
+     */
+    synchronized void stopAll() {
+        if (D) Log.d(TAG, "Stop all devices");
+
+        for (Map.Entry<String, ConnectThread> item : mConnectThreads.entrySet()) {
+            ConnectThread thread = mConnectThreads.get(item.getKey());
+
+            if (thread != null) {
+                thread.cancel();
+            }
+        }
+
+        mConnectThreads.clear();
+
+
+        for (Map.Entry<String, ConnectedThread> item : mConnectedThreads.entrySet()) {
+            ConnectedThread thread = mConnectedThreads.get(item.getKey());
+
+            if (thread != null) {
+                thread.cancel();
+            }
+        }
+
+        mConnectedThreads.clear();
+
+        for (Map.Entry<String, String> item : mStates.entrySet()) {
+            mStates.put(item.getKey(), STATE_NONE);
+        }
+
+        mFirstDeviceAddress = null;
+    }
 
     /**
      * Return the current connection state.
+     *
+     * @param id Device address
      */
-    private synchronized String getState() { return mState; }
-
-    /**
-     * Set the current state of connection
-     * 
-     * @param state An integer defining the current connection state
-     */
-    private synchronized void setState(String state) {
-        if (D) Log.d(TAG, "setState() " + mState + " -> " + state);
-        mState = state;
+    private synchronized String getState(String id) {
+        return mStates.get(id);
     }
 
     /**
@@ -149,17 +205,25 @@ class RCTBluetoothSerialService {
      * @param device The BluetoothDevice that has been connected
      */
     private synchronized void connectionSuccess(BluetoothSocket socket, BluetoothDevice device) {
-        if (D) Log.d(TAG, "connected");
+        String id = device.getAddress();
 
-        cancelConnectThread(); // Cancel any thread attempting to make a connection
-        cancelConnectedThread(); // Cancel any thread currently running a connection
+        if (D) Log.d(TAG, "Connected to device id " + id);
+
+        cancelConnectThread(id); // Cancel any thread attempting to make a connection
+        cancelConnectedThread(id); // Cancel any thread currently running a connection
 
         // Start the thread to manage the connection and perform transmissions
-        mConnectedThread = new ConnectedThread(socket, device);
-        mConnectedThread.start();
+        ConnectedThread thread = new ConnectedThread(socket, device);
+        thread.start();
 
+        mConnectedThreads.put(id, thread);
         mModule.onConnectionSuccess("Connected to " + device.getName(), device);
-        setState(STATE_CONNECTED);
+
+        if (mStates.containsKey(id)) {
+            String oldState = mStates.get(id);
+            if (D) Log.d(TAG, "Device id " + id + " setState() " + oldState + " -> " + STATE_CONNECTED);
+            mStates.put(id, STATE_CONNECTED);
+        }
     }
 
     /**
@@ -168,7 +232,7 @@ class RCTBluetoothSerialService {
      */
     private void connectionFailed(BluetoothDevice device) {
         mModule.onConnectionFailed("Unable to connect to device", device); // Send a failure message with device
-        RCTBluetoothSerialService.this.stop(); // Start the service over to restart listening mode
+        RCTBluetoothSerialService.this.stop(device.getAddress()); // Start the service over to restart listening mode
     }
 
     /**
@@ -177,26 +241,38 @@ class RCTBluetoothSerialService {
      */
     private void connectionLost(BluetoothDevice device) {
         mModule.onConnectionLost("Device connection was lost", device); // Send a failure message
-        RCTBluetoothSerialService.this.stop(); // Start the service over to restart listening mode
+        RCTBluetoothSerialService.this.stop(device.getAddress()); // Start the service over to restart listening mode
     }
 
     /**
      * Cancel connect thread
+     *
+     * @param id Device address
      */
-    private void cancelConnectThread() {
-        if (mConnectThread != null) {
-            mConnectThread.cancel();
-            mConnectThread = null;
+    private void cancelConnectThread(String id) {
+        if (mConnectThreads.containsKey(id)) {
+            ConnectThread thread = mConnectThreads.get(id);
+
+            if (thread != null) {
+                thread.cancel();
+                mConnectThreads.remove(id);
+            }
         }
     }
 
     /**
      * Cancel connected thread
+     *
+     * @param id Device address
      */
-    private void cancelConnectedThread() {
-        if (mConnectedThread != null) {
-            mConnectedThread.cancel();
-            mConnectedThread = null;
+    private void cancelConnectedThread(String id) {
+        if (mConnectedThreads.containsKey(id)) {
+            ConnectedThread thread = mConnectedThreads.get(id);
+
+            if (thread != null) {
+                thread.cancel();
+                mConnectedThreads.remove(id);
+            }
         }
     }
 
@@ -275,7 +351,7 @@ class RCTBluetoothSerialService {
 
             // Reset the ConnectThread because we're done
             synchronized (RCTBluetoothSerialService.this) {
-                mConnectThread = null;
+                mConnectThreads.remove(mmDevice.getAddress());
             }
 
             connectionSuccess(mmSocket, mmDevice); // Start the connected thread
@@ -338,12 +414,14 @@ class RCTBluetoothSerialService {
             byte[] buffer = new byte[1024];
             int bytes;
 
+            String id = mmDevice.getAddress();
+
             // Keep listening to the InputStream while connected
             while (true) {
                 try {
                     bytes = mmInStream.read(buffer); // Read from the InputStream
                     String data = new String(buffer, 0, bytes, "ISO-8859-1");
-                    mModule.onData(data); // Send the new data String to the UI Activity
+                    mModule.onData(id, data); // Send the new data String to the UI Activity
                 } catch (Exception e) {
                     Log.e(TAG, "disconnected", e);
                     mModule.onError(e);

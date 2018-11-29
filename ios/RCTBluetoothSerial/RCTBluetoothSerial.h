@@ -44,14 +44,9 @@ typedef void (^RCTBluetoothSerialPeripheralCallback) (CBPeripheral *_Nullable pe
 @property (strong, nonatomic) NSMutableDictionary *delimiters;
 
 /*!
- * Resolver block for connection related function.
+ * Resolvers an rejectors for connection related function.
  */
-@property (copy, nonatomic) RCTPromiseResolveBlock connectionResolver;
-
-/*!
- * Rejector block for connection related function.
- */
-@property (copy, nonatomic) RCTPromiseRejectBlock connectionRejector;
+@property (strong, nonatomic) NSMutableDictionary *connectionPromises;
 
 /**
  *  @method bluetoothPowerStateTimer

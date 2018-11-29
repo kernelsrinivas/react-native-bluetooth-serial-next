@@ -588,13 +588,7 @@ characteristicUUID:(CBUUID *)characteristicUUID
     
     for (int i = 0; i < self.peripherals.count; i++) {
         CBPeripheral *peripheral = [self.peripherals objectAtIndex:i];
-        
-        if (peripheral.identifier != NULL) {
-            NSLog(@"%d  |  %@", i, peripheral.identifier.UUIDString);
-        } else {
-            NSLog(@"%d  |  NULL", i);
-        }
-        
+        NSLog(@"%d  |  %@", i, peripheral.identifier.UUIDString);
         [self printPeripheralInfo:peripheral];
     }
 }
@@ -603,13 +597,7 @@ characteristicUUID:(CBUUID *)characteristicUUID
 {
     NSLog(@"------------------------------------");
     NSLog(@"Peripheral Info :");
-    
-    if (peripheral.identifier != NULL) {
-        NSLog(@"UUID : %@", peripheral.identifier.UUIDString);
-    } else {
-        NSLog(@"UUID : NULL");
-    }
-    
+    NSLog(@"UUID : %@", peripheral.identifier.UUIDString);
     NSLog(@"Name : %@", peripheral.name);
     NSLog(@"-------------------------------------");
 }
@@ -655,17 +643,7 @@ characteristicUUID:(CBUUID *)characteristicUUID
     } else {
         [[self delegate] didPowerOff];
         
-        if ([self.activePeripherals count] == 1) {
-            NSString *key = [[self.activePeripherals allKeys] objectAtIndex:0];
-            NSMutableDictionary *dict = [self.activePeripherals objectForKey:key];
-            
-            if (dict) {
-                CBPeripheral *peripheral = [dict objectForKey:@"peripheral"];
-                [[self delegate] didConnectionLost:peripheral];
-            }
-        } else if ([self.activePeripherals count] > 1) {
-            NSMutableArray *connectedPeripherals = [[NSMutableArray alloc] init];
-            
+        if ([self.activePeripherals count] > 0) {
             for (NSString *key in self.activePeripherals) {
                 NSMutableDictionary *dict = [self.activePeripherals objectForKey:key];
                 
@@ -674,11 +652,11 @@ characteristicUUID:(CBUUID *)characteristicUUID
                 }
                 
                 if ((BOOL)[dict valueForKey:@"connected"]) {
-                    [connectedPeripherals addObject:[dict objectForKey:@"peripheral"]];
+                    CBPeripheral *peripheral = [dict objectForKey:@"peripheral"];
+                    [[self delegate] didConnectionLost:peripheral];
                 }
             }
             
-            [[self delegate] didMultipleConnectionLost:connectedPeripherals];
         }
     }
 #else

@@ -118,18 +118,6 @@ BluetoothSerial.device = id => ({
   withDelimiter: delimiter => BluetoothSerial.withDelimiter(delimiter, id),
 
   /**
-   * Set the selected bluetooth adapter a new name.
-   *
-   * @param name
-   * @return {Promise<String>}
-   *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
-   *         is missing.
-   */
-  setAdapterName: name => BluetoothSerial.setAdapterName(name, id),
-
-  /**
    * Listen and read data from the selected device.
    *
    * @param {Function} [callback=() => {}]
