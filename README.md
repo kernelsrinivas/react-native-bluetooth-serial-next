@@ -1,40 +1,43 @@
-# React Native Bluetooth Serial Next
+# React Native Bluetooth Serial Next :)
 
-React Native version of [BluetoothSerial](https://github.com/don/BluetoothSerial) plugin for both Android and iOS. Pulled from [rusel1989/react-native-bluetooth-serial](https://github.com/rusel1989/react-native-bluetooth-serial) to fix some bugs.
+[![npm](https://img.shields.io/npm/v/react-native-bluetooth-serial-next.svg?style=popout-square)](https://www.npmjs.com/package/react-native-bluetooth-serial-next) [![NpmLicense](https://img.shields.io/npm/l/react-native-bluetooth-serial-next.svg?style=popout-square)](https://github.com/nuttawutmalee/react-native-bluetooth-serial-next) [![Dependency Status](https://img.shields.io/david/nuttawutmalee/react-native-bluetooth-serial-next.svg?style=popout-square)](https://david-dm.org/nuttawutmalee/react-native-bluetooth-serial-next) [![NPM Downloads](https://img.shields.io/npm/dt/react-native-bluetooth-serial-next.svg?style=popout-square)](https://www.npmjs.com/package/react-native-bluetooth-serial-next)
 
-- [Installation](#installation)
-- [Manual Installation](#manual-installation)
-  - [iOS](#ios)
-  - [Android](#android)
-- [Reading and Writing Concern](#reading-and-writing-concern)
-- [Example Application](#example-application)
-- [APIs](#apis)
-  - [High Order Component](#high-order-component)
-  - [Device Object](#device-object)
+React Native version of [BluetoothSerial](https://github.com/don/BluetoothSerial) plugin for both Android and iOS. Pulled from [React Native Bluetooth Serial](https://github.com/rusel1989/react-native-bluetooth-serial).
+
+**Notes:** In iOS, this currently supports preconfigured services which are Read Bear lab, Adafruit BLE, Bluegiga, Laird Virtual Serial Port, and Rongta.
+
+## Table of Contents
+
+- [Getting started](#getting-started)
+- [Example](#example)
+- [API Reference](#api-reference)
+  - [Device object](#device-object)
+  - [High order component](#high-order-component)
   - [Methods](#methods)
-  - [Events](#events)
+- [Multiple devices connection](#multiple-devices-connection)
+- [Events](#events)
 - [Todos](#todos)
 
-## Installation
+## Getting started
 
 ```bash
-npm install react-native-bluetooth-serial-next
+npm install react-native-bluetooth-serial-next --save
+react-native link react-native-bluetooth-serial-next
 ```
 
-1. Link libraries with: `rnpm link` or `react-native link` for React Native >= 0.27
-2. For android you also need to put the following code to `AndroidManifest.xml`
+For Android, you need to put the following code to `AndroidManifest.xml` in `android/app/src/main` at your project root folder.
 
-```
+```xml
 <uses-permission android:name="android.permission.BLUETOOTH" />
 <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" />
 <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 ```
 
-## Manual Installation
+### Manual Installation
 
 #### iOS
 
-1. `npm i react-native-bluetooth-serial-next`
+1. `npm install react-native-bluetooth-serial-next --save`
 2. In XCode, in the project navigator, right click `Libraries` ➜ `Add Files to [your project's name]`
 3. Go to `node_modules` ➜ `react-native-bluetooth-serial-next` and add `RCTBluetoothSerial.xcodeproj`
 4. In XCode, in the project navigator, select your project. Add `libRCTBluetoothSerial.a` to your project's `Build Phases` ➜ `Link Binary With Libraries`
@@ -43,52 +46,71 @@ npm install react-native-bluetooth-serial-next
 
 #### Android
 
-1. `npm i react-native-bluetooth-serial-next`
+1. `npm install react-native-bluetooth-serial-next --save`
 2. Open up `android/app/src/main/java/[...]/MainActivity.java` or `MainApplication.java` for React Native >= 0.29
-
-- Add `import com.nuttawutmalee.RCTBluetoothSerial.*;` to the imports at the top of the file
-- Add `new RCTBluetoothSerialPackage()` to the list returned by the `getPackages()` method
-
-3. Append the following lines to `android/settings.gradle`:
-   ```
+   <br />
+   - Add `import com.nuttawutmalee.RCTBluetoothSerial.*;` to the imports at the top of the file
+   - Add `new RCTBluetoothSerialPackage()` to the list returned by the `getPackages()` method
+     <br />
+3. Append the following lines to `android/settings.gradle`
+   <br />
+   ```groovy
    include ':react-native-bluetooth-serial-next'
    project(':react-native-bluetooth-serial-next').projectDir = new File(rootProject.projectDir, '../node_modules/react-native-bluetooth-serial-next/android')
    ```
-4. Insert the following lines inside the dependencies block in `android/app/build.gradle`:
-   ```
+4. Insert the following lines inside the dependencies block in `android/app/build.gradle`
+   <br />
+   ```groovy
    compile project(':react-native-bluetooth-serial-next')
    ```
 
-## Reading and Writing Concern
+## Example
 
-In Android after you connect to peripheral `write` and `read` methods should work for most of devices out of the box.
-On iOS with BLE it is little bit complicated, you need to know correct serice and characteristics UUIDs. Currently
-supported and preconfigured services are Red Bear lab, Adafruit BLE, Bluegiga, Laird Virtual Serial Port and Rongta.
-
-## Example Application
-
-1. Pull from this repository
-2. `cd example`
+1. `git clone https://github.com/nuttawutmalee/react-native-bluetooth-serial-next.git`
+2. `cd react-native-bluetooth-serial-next/example`
 3. `npm install && npm link ../`
 4. `npm start`
 5. `react-native run-ios` or `react-native run-android`
 
----
+## API Reference
 
-## APIs
+### Device object
 
-### High Order Component
+This is basically the result object from API methods depends on application environment operation system.
 
-#### withSubscription(options)
+**iOS**
 
-This HOC will create an event listener and send it though as a prop. This will also remove all listeners when the wrapped component will unmount as well.
+```js
+{
+    id: '111-111-111-111',
+    uuid: '111-111-111-111',
+    name: 'Bluetooth Printer',
+    rssi: 'This field might not be present in the object',
+}
+```
 
-Available Options:
+**Android**
 
-- `subscriptionName` : The event listener name that send through as a prop. (default is `subscription`.)
-- `destroyOnWillUnmount` : Should all listeners function be removed on will unmount? (default is `true`.)
+```js
+{
+    id: '111-111-111-111',
+    uuid: '111-111-111-111',
+    name: 'Bluetooth Printer',
+    class: 'This field might not be present in the object',
+}
+```
 
-Example:
+### High order component
+
+#### withSubscription( options : <span style="color:#999;">Object</span> ) : <span style="color:#999;">React.Component</span>
+
+This high order component will create an event listener and send it though as a prop. This will also remove all listeners on React lifecycle `componentWillUnmount` as well.
+
+- options : <span style="color:#999;">Object</span>
+  - subscriptionName : <span style="color:#999;">String</span> = `'subscription'`
+    The event listener prop name.
+  - destroyOnWillUnmount : <span style="color:#999;">Boolean</span> = `true`
+    Should event listeners remove all listeners and subscription
 
 ```js
 class MyComponent extends React.Component {
@@ -101,123 +123,65 @@ export default withSubscription({
 })(MyComponent);
 ```
 
-### Device Object
-
-#### Android
-
-```js
-{
-    "id": "111-111-111-111-111",
-    "address": "111-111-111-111",
-    "name": "My Printer",
-    "class": "This field might not be in the object",
-}
-```
-
-#### iOS
-
-```js
-{
-    "id": "111-111-111-111",
-    "uuid": "111-111-111-111",
-    "name": "My Printer",
-    "rssi": "This field might not be in the object",
-}
-```
-
 ### Methods
 
-#### + requestEnable(): Promise\<Boolean>
+- [Bluetooth adapter service](#bluetooth-adapter-service)
+- [Device pairing](#device-pairing)
+- [Device connection](#device-connection)
+- [Device IO](#device-io)
+- [Device buffer](#device-buffer)
 
-**This will throws an error in iOS platform.**
-Prompts user device to enable bluetooth adapter.
+#### Bluetooth adapter service
+
+##### requestEnable() : <span style="color:#999;">Promise\<Boolean></span>
+
+Prompts the application device to enable bluetooth adapter.
+
+- For iOS, this method will throw an error.
+- For Android, if the user does not enable bluetooth upon request, it will throw an error.
 
 ```js
 await BluetoothSerial.requestEnable();
 ```
 
-#### + enable(): Promise\<Boolean>
+##### enable() : <span style="color:#999;">Promise\<Boolean></span>
 
-**This will throws an error in iOS platform.**
 Enable bluetooth adapter service.
+
+- For iOS, this method will throw an error.
 
 ```js
 await BluetoothSerial.enable();
 ```
 
-#### + disable(): Promise\<Boolean>
+##### disable() : <span style="color:#999;">Promise\<Boolean></span>
 
-**This will throws an error in iOS platform.**
 Disable bluetooth adapter service.
+
+- For iOS, this method will throw an error.
 
 ```js
 await BluetoothSerial.disable();
 ```
 
-#### + isEnabled(): Promise\<Boolean>
+##### isEnabled() : <span style="color:#999;">Promise\<Boolean></span>
 
-**This will throws an error in iOS platform.**
 Indicates bluetooth adapter service status.
 
 ```js
 const isEnabled = await BluetoothSerial.isEnabled();
 ```
 
-#### + pairDevice(id: String): Promise\<[Device](#device-object)>
+##### list() : <span style="color:#999;">Promise\<[Device](#device-object)[]></span>
 
-**This will throws an error in iOS platform.**
-Pair with a bluetooth device.
-
-```js
-const device = await BluetoothSerial.pairDevice(id);
-```
-
-#### + unpairDevice(id: String): Promise\<[Device](#device-object)>
-
-**This will throws an error in iOS platform.**
-Unpair with a bluetooth device.
-
-```js
-const device = await BluetoothSerial.unpairDevice(id);
-```
-
-#### + connect(id: String): Promise\<[Device](#device-object)>
-
-Connect to a bluetooth device / peripheral.
-
-```js
-const device = await BluetoothSerial.connect(id);
-```
-
-#### + disconnect(): Promise\<Boolean>
-
-Disconnect from connected bluetooth device / peripheral.
-
-```js
-await BluetoothSerial.disconnect();
-```
-
-#### + isConnected(): Promise\<Boolean>
-
-Indicates if you are connected with active bluetooth device / peripheral or not.
-
-```js
-const isConnected = await BluetoothSerial.isConnected();
-```
-
-#### + list(): Promise\<[Device](#deviceObject)[]>
-
-List all paired (android) / connected (ios) bluetooth devices.
+List all paired (Android) or connected (iOS) bluetooth devices.
 
 ```js
 const devices = await BluetoothSerial.list();
 ```
 
-#### + listUnpaired(): Promise\<[Device](#deviceObject)[]>
+##### listUnpaired() : <span style="color:#999;">Promise\<[Device](#device-object)[]></span> | discoverUnpairedDevices() : <span style="color:#999;">Promise\<[Device](#device-object)[]></span>
 
-#### + discoverUnpairedDevices(): Promise\<[Device](#deviceObject)[]>
-
-**This will throws an error in iOS platform.**
 List all unpaired bluetooth devices.
 
 ```js
@@ -225,20 +189,106 @@ const devices = await BluetoothSerial.listUnpaired();
 const devices = await BluetoothSerial.discoverUnpairedDevices();
 ```
 
-#### + cancelDiscovery(): Promise\<Boolean></Boolean>
+##### cancelDiscovery() : <span style="color:#999;">Promise\<Boolean></span> | stopScanning() : <span style="color:#999;">Promise\<Boolean></span>
 
-#### + stopScanning(): Promise\<Boolean></Boolean>
-
-Cancel bluetooth device discovery.
+Cancel bluetooth device discovery process.
 
 ```js
 await BluetoothSerial.cancelDiscovery();
 await BluetoothSerial.stopScanning();
 ```
 
-#### + read(cb: Function, delimiter: String): void
+##### setAdapterName( name : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<String></span>
 
-Listen and read data from connected device.
+Give bluetooth adapter a new name.
+
+- name : <span style="color:#999;">String</span>
+  Bluetooth adapter new name.
+- For iOS, this method will throw an error.
+
+```js
+const newName = await BluetoothSerial.setAdapterName("New Adapter Name");
+```
+
+---
+
+#### Device pairing
+
+##### pairDevice( id : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<[Device](#device-object) | null></span>
+
+Pair with a bluetooth device.
+
+- id : <span style="color:#999;">String</span>
+  Device id or uuid.
+- For iOS, this method will throw an error.
+
+```js
+const device = await BluetoothSerial.pairDevice(id);
+```
+
+##### unpairDevice( id : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<[Device](#device-object) | null></span>
+
+Unpair from a bluetooth device.
+
+- id : <span style="color:#999;">String</span>
+  Device id or uuid.
+- For iOS, this method will throw an error.
+
+```js
+const device = await BluetoothSerial.unpairDevice(id);
+```
+
+---
+
+#### Device connection
+
+##### connect( id : <span style="color:#999;">String</span> ): <span style="color:#999;">Promise\<[Device](#device-object)></span>
+
+Connect to a specific bluetooth device.
+
+- id : <span style="color:#999;">String</span>
+  Device id or uuid.
+
+```js
+const device = await BluetoothSerial.connect(id);
+```
+
+##### disconnect( id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<Boolean></span>
+
+Disconnect from the specific connected bluetooth device. If `id` is omitted, the first connected device will be disconnected.
+
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
+
+```js
+await BluetoothSerial.disconnect();
+```
+
+##### isConnected( id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<Boolean></span>
+
+Indicates the specific connected bluetooth device connection status. If `id` is omitted, it will return the connection status of the first connected device.
+
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
+
+```js
+const isConnected = await BluetoothSerial.isConnected();
+```
+
+---
+
+#### Device IO
+
+##### read( callback : <span style="color:#999;">Function</span>, delimiter? : <span style="color:#999;">String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">void</span>
+
+Listen and read data from the selected or first connected device.
+
+- callback : <span style="color:#999;">Function</span>
+  - data : <span style="color:#999;">String</span>
+  - subscription : <span style="color:#999;">EmitterSubscription</span>
+- delimiter? : <span style="color:#999;">String</span> = `''`
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 BluetoothSerial.read((data, subscription) => {
@@ -250,17 +300,29 @@ BluetoothSerial.read((data, subscription) => {
 }, "\r\n");
 ```
 
-#### + readOnce(delimiter: String): Promise\<String>
+##### readOnce( delimiter? : <span style="color:#999;">String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<String></span>
 
-Read data from connected device once.
+Read data from the selected or first connected device once.
+
+- delimiter? : <span style="color:#999;">String</span> = `''`
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 const data = await BluetoothSerial.readOnce("\r\n");
 ```
 
-#### + readEvery(cb: Function, ms: Number, delimiter: String): void
+##### readEvery( callback : <span style="color:#999;">Function</span>, ms? : <span style="color:#999;">Number</span>, delimiter? : <span style="color:#999;">String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">void</span>
 
-Read data from connected device for every ... ms.
+Read data from the selected or first connected device every n ms.
+
+- callback : <span style="color:#999;">Function</span>
+  - data : <span style="color:#999;">String</span>
+  - intervalId : <span style="color:#999;">Number</span>
+- ms?: <span style="color:#999;">Number</span> = `1000`
+- delimiter? : <span style="color:#999;">String</span> = `''`
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 BluetoothSerial.readEvery(
@@ -271,158 +333,229 @@ BluetoothSerial.readEvery(
       clearInterval(intervalId);
     }
   },
-  1000,
+  5000,
   "\r\n"
 );
 ```
 
-#### + readFromDevice(): Promise\<String>
+##### readFromDevice( id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<String></span>
 
-Read all buffer data from connected device.
+Read all buffer data from the selected or first connected device.
+
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 const data = await BluetoothSerial.readFromDevice();
 ```
 
-#### + readUntilDelimiter(delimiter: String): Promise\<String>
+##### readUntilDelimiter( delimiter : <span style="color:#999;">String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<String></span>
 
-Read all buffer data up to particular delimiter rom connected device.
+Read all buffer data up to certain delimiter from the selected or first connected device.
+
+- delimiter : <span style="color:#999;">String</span>
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 const data = await BluetoothSerial.readUntilDelimiter("\r\n");
 ```
 
-#### + write(data: Buffer | String): Promise\<Boolean>
+##### write( data : <span style="color:#999;">Buffer | String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<Boolean></span>
 
-Write data to device, you can pass string or buffer,
-We must convert to base64 in React Native
-because there is no way to pass buffer directly.
+Write buffer or string to the selected or first connected device.
+
+- data : <span style="color:#999;">Buffer | String</span>
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 await BluetoothSerial.write("This is the test message");
 ```
 
-#### + writeToDevice(data: String): Promise\<Boolean>
+##### writeToDevice( data : <span style="color:#999;">String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<Boolean></span>
 
-Write string to device.
+Write string to the selected or first connected device.
+
+- data : <span style="color:#999;">String</span>
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 await BluetoothSerial.writeToDevice("This is the test message");
 ```
 
-#### + clear(): Promise\<Boolean>
+---
 
-Clear all buffer data.
+#### Device buffer
+
+##### clear( id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<Boolean></span>
+
+Clear all buffer data of the selected or first connected device.
+
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 await BluetoothSerial.clear();
 ```
 
-#### + available(): Promise\<Number>
+##### available( id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<Number></span>
 
-Get length of buffer data.
+Get length of current buffer data of the selected or first connected device.
+
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
 const bufferLength = await BluetoothSerial.available();
 ```
 
-#### + setAdapter(name: String): Promise\<String>
+##### withDelimiter( delimiter : <span style="color:#999;">String</span>, id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Promise\<String | null></span>
 
-**This will throws an error in iOS platform.**
-Set bluetooth adapter a new name.
+Set delimiter that will split the buffer data when you are reading from device.
+
+- delimiter : <span style="color:#999;">String</span>
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
 
 ```js
-const newName = await BluetoothSerial.setAdapterName("New Adapter Name");
+const deviceId = await BluetoothSerial.withDelimiter("\r\n");
 ```
 
-#### + withDelimiter(delimiter: String): Promise\<Boolean>
+### Multiple devices connection
 
-Set delimiter split the buffer data when you are reading from device.
+This module supports multiple devices connection, as you can see in [API Methods](#methods), most of the connection, IO, and buffer methods have `id` parameter that you can pass and specify which bluetooth device that you want to control.
+
+However, to keep it clean and simple, you can use the following method to simplify them.
+
+#### device( id? : <span style="color:#999;">String</span> ) : <span style="color:#999;">Object</span>
+
+This method gives the ability to call group of API methods instead of pass `id` parameter at the end of each methods.
+
+- id? : <span style="color:#999;">String</span>
+  Optional device id or uuid.
+
+The followings are group of methods that you can use with this method.
+
+- `connect`
+- `disconnect`
+- `isConnected`
+- `clear`
+- `available`
+- `withDelimiter`
+- `read`
+- `readOnce`
+- `readEvery`
+- `readUntilDelimiter`
+- `readFromDevice`
+- `write`
+- `writeToDevice`
 
 ```js
-await BluetoothSerial.withDelimiter("\r\n");
+const myDevice = BluetoothSerial.device(myId);
+const yourDevice = BluetoothSerial.device(yourId);
+
+await myDevice.connect();
+await myDevice.write('This is a message for my device.');
+
+
+let yourReadSubscription;
+
+await yourDevice.connect();
+await yourDevice.read((data, subscription) => {
+    yourReadSubscription = subscription;
+
+    console.log('Your data:', data);
+
+    if (/** */) {
+        BluetoothSerial.removeSubscription(subscription);
+        yourReadSubscription = null;
+    }
+});
+
+await myDevice.disconnect();
+
+if (yourReadSubscription) {
+    BluetoothSerial.removeSubscription(yourReadSubscription);
+}
+
+await yourDevice.disconnect();
 ```
 
 ### Events
 
-#### Event Names
+#### Types
 
-- `bluetoothEnabled`
-  When bluetooth adapter is turned on.
-- `bluetoothDisabled`
-  When bluetooth adapter is turned off.
-- `connectionSuccess`
-  When device is connected. You get object of message and [device](#device-object).
+- `bluetoothEnabled` : When bluetooth adapter is turned on.
+- `bluetoothDisabled` : When bluetooth adapter is turned off.
+- `connectionSuccess` : When device is connected. You get object of message and [device](#device-object).
 
   ```js
   {
-      "message": ...,
-      "device": {
+      message: ...,
+      device: {
           ...
       }
   }
   ```
 
-- `connectionFailed`
-  When you failed to connect to the device. You get object of message and [device](#device-object).
+- `connectionFailed` : When you failed to connect to the device. You get object of message and [device](#device-object).
 
   ```js
   {
-      "message": ...,
-      "device": {
+      message: ...,
+      device: {
           ...
       }
   }
   ```
 
-- `connectionLost`
-  When the device connection is lost. You get object of message and [device](#device-object).
+- `connectionLost` : When the device connection is lost. You get object of message and [device](#device-object).
 
   ```js
   {
-      "message": ...,
-      "device": {
+      message: ...,
+      device: {
           ...
       }
   }
   ```
 
-- `read` or `data`
-  String of data from device. You get object of data.
+- `read` or `data` : String of data from device. You get object of device id and data.
 
   ```js
   {
-      "data": ...
+      id: ...,
+      data: ...
   }
   ```
 
-- `error`
-  Error message from native code.
+- `error` : Error message from native code.
 
   ```js
   {
-      "message": ...
+      message: ...
   }
   ```
 
 #### Methods
 
-##### + once(eventName, handler)
+##### once( eventName : <span style="color:#999;">String</span>, handler : <span style="color:#999;">Function</span> ) : <span style="color:#999;">EmitterSubscription</span>
 
-##### + on(eventName, handler)
+##### on( eventName : <span style="color:#999;">String</span>, handler : <span style="color:#999;">Function</span> ) : <span style="color:#999;">EmitterSubscription</span>
 
-##### + addListener(eventName, handler)
+##### addListener( eventName : <span style="color:#999;">String</span>, handler : <span style="color:#999;">Function</span> ) : <span style="color:#999;">EmitterSubscription</span>
 
-##### + off(eventName, handler)
+##### off( eventName : <span style="color:#999;">String</span>, handler : <span style="color:#999;">Function</span> ) : <span style="color:#999;">void</span>
 
-##### + removeListener(eventName, handler)
+##### removeListener( eventName : <span style="color:#999;">String</span>, handler : <span style="color:#999;">Function</span> ) : <span style="color:#999;">void</span>
 
-##### + removeAllListeners(eventName?)
+##### removeAllListeners( eventName? : <span style="color:#999;">String</span> ) : <span style="color:#999;">void</span>
 
-##### + removeSubscription(subscription)
+##### removeSubscription( subscription : <span style="color:#999;">EmitterSubscription</span>) : <span style="color:#999;">void</span>
 
 ## Todos
 
-- iOS Service declaration. We should be ab le to defice Array of Service UUID, Read Characteristic UUID, Write Characteristic UUID ourselves.
+- iOS Service declaration. We should be able to define array of service UUID, read characteristic UUID, write characteristic UUID ourselves.
 - Write base64 image.
-- Multiple connection.

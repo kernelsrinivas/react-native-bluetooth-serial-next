@@ -25,7 +25,8 @@ export const withSubscription = (
   }
 ) => WrappedComponent => {
   const subscriptionName =
-    typeof options.subscriptionName === "string"
+    typeof options.subscriptionName === "string" &&
+    options.subscriptionName !== ""
       ? options.subscriptionName
       : "subscription";
   const destroyOnWilUnmount =
@@ -43,10 +44,13 @@ export const withSubscription = (
       const subscription = this.props[subscriptionName];
 
       if (destroyOnWilUnmount && subscription) {
-        typeof subscription.remove === "function" && subscription.remove();
+        if (typeof subscription.remove === "function") {
+          subscription.remove();
+        }
 
-        typeof subscription.removeAllListeners === "functions" &&
+        if (typeof subscription.removeAllListeners === "function") {
           subscription.removeAllListeners();
+        }
       }
     }
 
@@ -65,12 +69,14 @@ export const withSubscription = (
  * give you the ability to read / write from
  * that device.
  *
- * @param {String}  id
+ * @param {String} [id]
  * @return {Object}
  */
-BluetoothSerial.device = id => ({
+BluetoothSerial.device = (id = null) => ({
   /**
    * Connect to certain bluetooth device / peripheral.
+   *
+   * @return {Promise<Object>}
    *
    * @throws this will throws an error if android bluetooth adapter
    *         is missing.
@@ -113,7 +119,7 @@ BluetoothSerial.device = id => ({
    * when you are reading from the selected device.
    *
    * @param delimiter
-   * @return {Promise<Boolean>}
+   * @return {Promise<String>}
    */
   withDelimiter: delimiter => BluetoothSerial.withDelimiter(delimiter, id),
 
@@ -124,9 +130,17 @@ BluetoothSerial.device = id => ({
    * @param {String} [delimiter=""]
    */
   read: (callback = () => {}, delimiter = "") => {
-    BluetoothSerial.withDelimiter(delimiter, id).then(() => {
-      const subscription = BluetoothSerial.addListener("read", data => {
-        callback(data, subscription);
+    if (typeof callback !== "function") {
+      return;
+    }
+
+    BluetoothSerial.withDelimiter(delimiter, id).then(deviceId => {
+      const subscription = BluetoothSerial.addListener("read", result => {
+        const { id: readDeviceId, data } = result;
+
+        if (readDeviceId === deviceId) {
+          callback(data, subscription);
+        }
       });
     });
   },
@@ -150,6 +164,10 @@ BluetoothSerial.device = id => ({
    * @param {String} [delimiter=""]
    */
   readEvery: (callback = () => {}, ms = 1000, delimiter = "") => {
+    if (typeof callback !== "function") {
+      return;
+    }
+
     const intervalId = setInterval(async () => {
       const data =
         typeof delimiter === "string"
@@ -197,7 +215,7 @@ BluetoothSerial.device = id => ({
    * @param {String} data
    * @return {Promise<Boolean>}
    */
-  writeToDevice: data => BluetoothSerial.writeToDevice(data)
+  writeToDevice: data => BluetoothSerial.writeToDevice(data, id)
 });
 
 /**
@@ -289,13 +307,22 @@ BluetoothSerial.removeSubscription = subscription =>
 /**
  * Listen and read data from device.
  *
- * @param {Function} [callback=() => {}]
+ * @param {Function} callback
  * @param {String} [delimiter=""]
+ * @param {String} [id]
  */
-BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
-  BluetoothSerial.withDelimiter(delimiter).then(() => {
-    const subscription = BluetoothSerial.addListener("read", data => {
-      callback(data, subscription);
+BluetoothSerial.read = (callback, delimiter = "", id = null) => {
+  if (typeof callback !== "function") {
+    return;
+  }
+
+  BluetoothSerial.withDelimiter(delimiter, id).then(deviceId => {
+    const subscription = BluetoothSerial.addListener("read", result => {
+      const { id: readDeviceId, data } = result;
+
+      if (readDeviceId === deviceId) {
+        callback(data, subscription);
+      }
     });
   });
 };
@@ -304,30 +331,37 @@ BluetoothSerial.read = (callback = () => {}, delimiter = "") => {
  * Read data from device once.
  *
  * @param  {String} [delimiter=""]
+ * @param  {String} [id]
  * @return {Promise<String>}
  */
-BluetoothSerial.readOnce = (delimiter = "") =>
+BluetoothSerial.readOnce = (delimiter = "", id = null) =>
   typeof delimiter === "string"
-    ? BluetoothSerial.readUntilDelimiter(delimiter)
-    : BluetoothSerial.readFromDevice();
+    ? BluetoothSerial.readUntilDelimiter(delimiter, id)
+    : BluetoothSerial.readFromDevice(id);
 
 /**
  * Read data from device every n ms.
  *
- * @param {Function} [callback=() => {}]
+ * @param {Function} callback
  * @param {Number} [ms=1000]
  * @param {String} [delimiter=""]
+ * @param {String} [id]
  */
 BluetoothSerial.readEvery = (
   callback = () => {},
   ms = 1000,
-  delimiter = ""
+  delimiter = "",
+  id = null
 ) => {
+  if (typeof callback !== "function") {
+    return;
+  }
+
   const intervalId = setInterval(async () => {
     const data =
       typeof delimiter === "string"
-        ? await BluetoothSerial.readUntilDelimiter(delimiter)
-        : await BluetoothSerial.readFromDevice();
+        ? await BluetoothSerial.readUntilDelimiter(delimiter, id)
+        : await BluetoothSerial.readFromDevice(id);
 
     callback(data, intervalId);
   }, ms);
@@ -338,10 +372,10 @@ BluetoothSerial.readEvery = (
  * We must convert to base64 in RN there is no way to pass buffer directly.
  *
  * @param  {Buffer|String} data
- * @param  {String} id Device id or uuid
+ * @param  {String} [id]
  * @return {Promise<Boolean>}
  */
-BluetoothSerial.write = (data, id) => {
+BluetoothSerial.write = (data, id = null) => {
   if (typeof data === "string") {
     data = new Buffer(data);
   }

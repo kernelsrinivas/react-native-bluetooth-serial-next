@@ -72,16 +72,16 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
 
         mReactContext = reactContext;
 
-        if (mConnectedPromises == null) {
-            mConnectedPromises = new HashMap<>();
-        }
-
         if (mBluetoothAdapter == null) {
             mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         }
 
         if (mBluetoothService == null) {
             mBluetoothService = new RCTBluetoothSerialService(this);
+        }
+
+        if (mConnectedPromises == null) {
+            mConnectedPromises = new HashMap<>();
         }
 
         if (mBuffers == null) {
@@ -461,12 +461,13 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
             mDelimiters.put(id, delimiter);
         }
 
-        promise.resolve(true);
+        promise.resolve(id);
     }
 
     @ReactMethod
     public void clear(String id, Promise promise) {
         if (id == null) {
+
             id = mBluetoothService.getFirstDeviceAddress();
         }
 
@@ -601,22 +602,23 @@ public class RCTBluetoothSerialModule extends ReactContextBaseJavaModule
         if (mBuffers.containsKey(id)) {
             StringBuffer buffer = mBuffers.get(id);
             buffer.append(data);
+            mBuffers.put(id, buffer);
+        }
 
-            String delimiter = "";
+        String delimiter = "";
 
-            if (mDelimiters.containsKey(id)) {
-                delimiter = mDelimiters.get(id);
-            }
+        if (mDelimiters.containsKey(id)) {
+            delimiter = mDelimiters.get(id);
+        }
 
-            String completeData = readUntil(id, delimiter);
+        String completeData = readUntil(id, delimiter);
 
-            if (completeData != null && completeData.length() > 0) {
-                WritableMap params = Arguments.createMap();
-                params.putString("id", id);
-                params.putString("data", completeData);
-                sendEvent(DEVICE_READ, params);
-                sendEvent(DATA_READ, params);
-            }
+        if (completeData != null && completeData.length() > 0) {
+            WritableMap params = Arguments.createMap();
+            params.putString("id", id);
+            params.putString("data", completeData);
+            sendEvent(DEVICE_READ, params);
+            sendEvent(DATA_READ, params);
         }
     }
 

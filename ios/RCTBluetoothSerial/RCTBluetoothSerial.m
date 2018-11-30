@@ -113,9 +113,8 @@ RCT_EXPORT_METHOD(listUnpaired:(RCTPromiseResolveBlock)resolve
 {
     // Apple does not support programmatically enabling central manager
     NSString *message = @"List unpaired peripherals; Apple does not support this function";
-    NSError *error = [NSError errorWithDomain:@"no_support" code:500 userInfo:@{NSLocalizedDescriptionKey:message}];
     [self onError:message];
-    reject(@"", message, error);
+    resolve([NSMutableArray new]);
 }
 
 RCT_EXPORT_METHOD(cancelDiscovery:(RCTPromiseResolveBlock)resolve
@@ -233,6 +232,8 @@ RCT_EXPORT_METHOD(withDelimiter:(NSString *)delimiter
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejector:(RCTPromiseRejectBlock)reject)
 {
+    NSMutableString *deviceUUID = nil;
+
     if (![delimiter isKindOfClass:[NSNull class]]) {
         NSMutableString *newDelimiter = [[NSMutableString alloc] initWithString:delimiter];
         NSLog(@"Set delimiter to %@ for UUID : %@", newDelimiter, uuid);
@@ -242,13 +243,15 @@ RCT_EXPORT_METHOD(withDelimiter:(NSString *)delimiter
             
             if (activePeripheral) {
                 [self.delimiters setValue:newDelimiter forKey:activePeripheral.identifier.UUIDString];
+                [deviceUUID setString:activePeripheral.identifier.UUIDString];
             }
         } else {
             [self.delimiters setValue:newDelimiter forKey:uuid];
+            [deviceUUID setString:uuid];
         }
     }
     
-    resolve((id)kCFBooleanTrue);
+    resolve(deviceUUID);
 }
 
 RCT_EXPORT_METHOD(clear:(NSString *)uuid

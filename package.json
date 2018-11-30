@@ -1,7 +1,7 @@
 {
   "name": "react-native-bluetooth-serial-next",
   "version": "1.0.3",
-  "description": "'Bluetooth serial for react native'",
+  "description": "Bluetooth serial for react native",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -12,17 +12,20 @@
   },
   "keywords": [
     "bluetooth",
+    "ble",
+    "react",
+    "native",
     "react-native"
   ],
-  "author": "Nuttawut Malee <nuttawutmalee@gmail.com>, Jakub Martyčák <martycakjakub@gmail.com>",
-  "license": "ISC",
+  "author": "Nuttawut Malee <nuttawutmalee@gmail.com>",
+  "license": "MIT",
   "bugs": {
     "url": "https://github.com/nuttawutmalee/react-native-bluetooth-serial-next/issues"
   },
-  "homepage": "https://github.com/nuttawutmalee/react-native-bluetooth-serial-next#readme",
+  "homepage": "https://nuttawutmalee.github.io/react-native-bluetooth-serial-next/",
   "dependencies": {
     "@babel/runtime": "^7.1.5",
-    "buffer": "^4.6.0"
+    "buffer": "^5.2.1"
   },
   "peerDependencies": {
     "react": "*",

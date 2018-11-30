@@ -29,13 +29,11 @@ class Example extends Component {
 
   constructor(props) {
     super(props);
-
     this.state = {
       isEnabled: false,
-      device: null,
+      connectedDevices: [],
       devices: [],
       unpairedDevices: [],
-      connected: false,
       connecting: false,
       scanning: false,
       section: 0
@@ -52,8 +50,6 @@ class Example extends Component {
 
     this.setState({ isEnabled, devices });
 
-    // Events
-
     // Bluetooth enable event
     this.events.on("bluetoothEnabled", () => {
       Toast.showShortBottom("Bluetooth enabled");
@@ -67,16 +63,25 @@ class Example extends Component {
     });
 
     // Error event
-    this.events.on("error", err => console.log(`Error: ${err.message}`));
+    this.events.on("error", ({ message }) => console.log(`Error: ${message}`));
 
     // Connection success event
     this.events.on("connectionSuccess", device => {
       if (device) {
         Toast.showShortBottom(
-          `Connection to device ${device.name} has been lost`
+          `Connection to device ${device.name} has bee established`
         );
+
+        this.setState(state => ({
+          connectedDevices: {
+            ...state.connectedDevices,
+            [device.id]: {
+              connected: true,
+              device
+            }
+          }
+        }));
       }
-      this.setState({ connected: true, device });
     });
 
     // Connection lost event
@@ -85,31 +90,35 @@ class Example extends Component {
         Toast.showShortBottom(
           `Connection to device ${device.name} has been lost`
         );
+
+        this.setState(state => ({
+          connectedDevices: {
+            ...state.connectedDevices,
+            [device.id]: {
+              connected: false,
+              device: null
+            }
+          }
+        }));
       }
-      this.setState({ connected: false, device: null });
     });
 
     // Connection failed event
     this.events.on("connectionFailed", device => {
       if (device) {
         Toast.showShortBottom(`Connection to device ${device.name} has failed`);
+
+        this.setState(state => ({
+          connectedDevices: {
+            ...state.connectedDevices,
+            [device.id]: {
+              connected: false,
+              device: null
+            }
+          }
+        }));
       }
-      this.setState({ connected: false, device: null });
     });
-
-    // Read / Data
-    // BluetoothSerial.on('data', () => {});
-    // BluetoothSerial.on('read', () => {});
-    BluetoothSerial.read((data, subscriptionId) => {
-      console.log(`Data read from connected device : ${data}`);
-
-      // To remove subscription, however if you use withSubscription HOC,
-      // it will remove all listeners eventually
-
-      // if (subscriptionId) {
-      //   BluetoothSerial.removeSubscription(subscriptionId);
-      // }
-    }, "\r\n");
   }
 
   /**
@@ -147,7 +156,6 @@ class Example extends Component {
   disable = async () => {
     try {
       await BluetoothSerial.disable();
-      this.setState({ isEnabled: false });
     } catch (err) {
       Toast.showShortBottom(err.message);
     }
@@ -167,29 +175,27 @@ class Example extends Component {
 
   /**
    * [android]
-   * [ios] it returns the same list as list() function
+   * [ios] throws an error
    * Discover unpaired devices
    */
   discoverUnpaired = async () => {
-    if (!this.state.scanning) {
-      this.setState({ scanning: true });
-      try {
-        // BluetoothSerial.discoverUnpairedDevices()
-        const unpairedDevices = await BluetoothSerial.listUnpaired();
-        this.setState({ unpairedDevices, scanning: false });
-      } catch (err) {
-        Toast.showShortBottom(err.message);
-      }
+    this.setState({ scanning: true });
+
+    try {
+      const unpairedDevices = await BluetoothSerial.listUnpaired();
+      this.setState({ unpairedDevices, scanning: false });
+    } catch (err) {
+      this.setState({ unpairedDevices: [], scanning: false });
+      Toast.showShortBottom(err.message);
     }
   };
 
   /**
-   * Discover unpaired devices, works only in android
+   * Cancel discovery
    */
   cancelDiscovery = async () => {
     if (this.state.scanning) {
       try {
-        // await BluetoothSerial.stopScanning()
         await BluetoothSerial.cancelDiscovery();
         this.setState({ scanning: false });
       } catch (err) {
@@ -208,22 +214,13 @@ class Example extends Component {
     try {
       const paired = await BluetoothSerial.pairDevice(device.id);
 
-      /**
-       * Device object
-       * [andriod]
-       * -> id, name, address, class (optional)
-       * [ios]
-       * -> id, uuid, name, rssi (optional)
-       */
-
       if (paired) {
         Toast.showShortBottom(`Device ${device.name} paired successfully`);
 
-        this.setState(state => ({
-          device,
+        this.setState({
           devices: [...devices, device],
           unpairedDevices: unpairedDevices.filter(v => v.id !== device.id)
-        }));
+        });
       } else {
         Toast.showShortBottom(`Device ${device.name} pairing failed`);
       }

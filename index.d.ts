@@ -25,7 +25,7 @@ export function withSubscription(options: {
 }): (WrappedComponent: React.Component) => React.Component;
 
 // tslint:disable-next-line:export-just-namespace
-export = BluetoothSerial;
+export default BluetoothSerial;
 export as namespace BluetoothSerial;
 
 declare namespace BluetoothSerial {
@@ -47,16 +47,15 @@ declare namespace BluetoothSerial {
   /**
    * Prompts user device to enable bluetooth adapter.
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function.
+   * @throws this will throws an error in Android if the user
+   *         does not enable the bluetooth service.
    */
   export function requestEnable(): Promise<boolean>;
 
   /**
    * Enable bluetooth adapter service.
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
+   * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
   export function enable(): Promise<boolean>;
@@ -64,18 +63,13 @@ declare namespace BluetoothSerial {
   /**
    * Disable bluetooth adapter service.
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
+   * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
   export function disable(): Promise<boolean>;
 
   /**
    * Indicates bluetooth adapter service status.
-   *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
-   *         is missing.
    */
   export function isEnabled(): Promise<boolean>;
 
@@ -164,47 +158,48 @@ declare namespace BluetoothSerial {
    *
    * @param id Device id
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
+   * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
   export function pairDevice(
     id: string
-  ): Promise<AndroidBluetoothDevice | iOSBluetoothDevice>;
+  ): Promise<AndroidBluetoothDevice | iOSBluetoothDevice | null>;
 
   /**
    * Unpair from certain bluetooth device.
    *
    * @param id Device id
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
+   * @throws this will throws an error if android bluetooth adapter
    *         is missing.
    */
   export function unpairDevice(
     id: string
-  ): Promise<AndroidBluetoothDevice | iOSBluetoothDevice>;
+  ): Promise<AndroidBluetoothDevice | iOSBluetoothDevice | null>;
 
   /**
    * Listen and read data from connected device.
    *
    * @param callback
    * @param delimiter
+   * @param id
    */
   export function read(
     callback: (
       data: string,
       subscription: ReactNative.EmitterSubscription
     ) => {},
-    delimiter?: string
+    delimiter?: string,
+    id?: string
   ): void;
 
   /**
    * Read data from connected device once.
    *
    * @param delimiter
+   * @param id
    */
-  export function readOnce(delimiter?: string): Promise<string>;
+  export function readOnce(delimiter?: string, id?: string): Promise<string>;
 
   /**
    * Read data from connected device every n ms.
@@ -212,11 +207,13 @@ declare namespace BluetoothSerial {
    * @param callback
    * @param ms
    * @param delimiter
+   * @param id
    */
   export function readEvery(
     callback: (data: string, intervalId: number) => {},
     ms?: number,
-    delimiter?: string
+    delimiter?: string,
+    id?: string
   ): void;
 
   /**
@@ -291,7 +288,7 @@ declare namespace BluetoothSerial {
   export function withDelimiter(
     delimiter: string,
     id?: string
-  ): Promise<boolean>;
+  ): Promise<string>;
 
   /**
    * Select a specific bluetooth device and
@@ -340,7 +337,7 @@ declare namespace BluetoothSerial {
      *
      * @param delimiter
      */
-    withDelimiter: (delimiter: string) => Promise<boolean>;
+    withDelimiter: (delimiter: string) => Promise<string>;
 
     /**
      * Listen and read data from the selected device.
