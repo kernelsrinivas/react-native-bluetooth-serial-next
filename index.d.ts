@@ -24,10 +24,6 @@ export function withSubscription(options: {
   destroyOnWillUnmount?: boolean;
 }): (WrappedComponent: React.Component) => React.Component;
 
-// tslint:disable-next-line:export-just-namespace
-export default BluetoothSerial;
-export as namespace BluetoothSerial;
-
 declare namespace BluetoothSerial {
   interface CommonDevice extends Object {
     id: string;
@@ -47,15 +43,17 @@ declare namespace BluetoothSerial {
   /**
    * Prompts user device to enable bluetooth adapter.
    *
-   * @throws this will throws an error in Android if the user
-   *         does not enable the bluetooth service.
+   * @throws this will always throw an error in iOS,
+   *         but in Android, only if the user does not enable
+   *         the bluetooth service upon request.
    */
   export function requestEnable(): Promise<boolean>;
 
   /**
    * Enable bluetooth adapter service.
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will always throw an error in iOS,
+   *         but in Android, only if bluetooth adapter
    *         is missing.
    */
   export function enable(): Promise<boolean>;
@@ -63,7 +61,8 @@ declare namespace BluetoothSerial {
   /**
    * Disable bluetooth adapter service.
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will always throw an error in iOS,
+   *         but in Android, only if bluetooth adapter
    *         is missing.
    */
   export function disable(): Promise<boolean>;
@@ -78,7 +77,7 @@ declare namespace BluetoothSerial {
    *
    * @param id Device id or uuid
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will throws an error if Android bluetooth adapter
    *         is missing.
    */
   export function connect(
@@ -90,7 +89,7 @@ declare namespace BluetoothSerial {
    *
    * @param id Device id or uuid
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will throws an error if Android bluetooth adapter
    *         is missing.
    */
   export function disconnect(id?: string): Promise<boolean>;
@@ -103,7 +102,7 @@ declare namespace BluetoothSerial {
   export function isConnected(id?: string): Promise<boolean>;
 
   /**
-   * List all paired (android) / connected (ios) bluetooth devices.
+   * List all paired (Android) / connected (iOS) bluetooth devices.
    */
   export function list(): Promise<
     Array<AndroidBluetoothDevice> | Array<iOSBluetoothDevice>
@@ -114,8 +113,7 @@ declare namespace BluetoothSerial {
    *
    * @alias discoverUnpairedDevices
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function.
+   * @throws this will always throws an error in iOS.
    */
   export function listUnpaired(): Promise<
     Array<AndroidBluetoothDevice> | Array<iOSBluetoothDevice>
@@ -126,8 +124,7 @@ declare namespace BluetoothSerial {
    *
    * @alias listUnpaired
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function.
+   * @throws this will always throws an error in iOS.
    */
   export function discoverUnpairedDevices(): Promise<
     Array<AndroidBluetoothDevice> | Array<iOSBluetoothDevice>
@@ -138,7 +135,7 @@ declare namespace BluetoothSerial {
    *
    * @alias stopScanning
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will throws an error if Android bluetooth adapter
    *         is missing.
    */
   export function cancelDiscovery(): Promise<boolean>;
@@ -148,7 +145,7 @@ declare namespace BluetoothSerial {
    *
    * @alias cancelDiscovery
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will throws an error if Android bluetooth adapter
    *         is missing.
    */
   export function stopScanning(): Promise<boolean>;
@@ -158,7 +155,8 @@ declare namespace BluetoothSerial {
    *
    * @param id Device id
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will always throw an error in iOS,
+   *         but in Android, only if bluetooth adapter
    *         is missing.
    */
   export function pairDevice(
@@ -170,7 +168,8 @@ declare namespace BluetoothSerial {
    *
    * @param id Device id
    *
-   * @throws this will throws an error if android bluetooth adapter
+   * @throws this will always throw an error in iOS,
+   *         but in Android, only if bluetooth adapter
    *         is missing.
    */
   export function unpairDevice(
@@ -237,8 +236,6 @@ declare namespace BluetoothSerial {
 
   /**
    * Write data to device, you can pass string or buffer,
-   * We must convert to base64 in React Native
-   * because there is no way to pass buffer directly.
    *
    * @param data
    * @param id Device id or uuid
@@ -272,8 +269,8 @@ declare namespace BluetoothSerial {
    *
    * @param name
    *
-   * @throws this will throws an error in iOS because it does not
-   *         support this function or if android bluetooth adapter
+   * @throws this will always throw an error in iOS,
+   *         but in Android, only if bluetooth adapter
    *         is missing.
    */
   export function setAdapterName(name: string): Promise<string>;
@@ -303,7 +300,7 @@ declare namespace BluetoothSerial {
     /**
      * Connect to certain bluetooth device / peripheral.
      *
-     * @throws this will throws an error if android bluetooth adapter
+     * @throws this will throws an error if Android bluetooth adapter
      *         is missing.
      */
     connect(): Promise<AndroidBluetoothDevice | iOSBluetoothDevice>;
@@ -311,7 +308,7 @@ declare namespace BluetoothSerial {
     /**
      * Disconnect from the selected bluetooth device / peripheral.
      *
-     * @throws this will throws an error if android bluetooth adapter
+     * @throws this will throws an error if Android bluetooth adapter
      *         is missing.
      */
     disconnect: () => Promise<boolean>;
@@ -501,3 +498,7 @@ declare namespace BluetoothSerial {
     subscription: ReactNative.EmitterSubscription
   ): void;
 }
+
+// tslint:disable-next-line:export-just-namespace
+export = BluetoothSerial;
+export as namespace BluetoothSerial;

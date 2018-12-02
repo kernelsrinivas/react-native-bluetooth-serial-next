@@ -1,13 +1,13 @@
-import React, { Component } from "react";
+import React from "react";
 import {
   Platform,
   ScrollView,
   Switch,
   Text,
-  TouchableOpacity,
   SafeAreaView,
   View,
-  ActivityIndicator
+  ActivityIndicator,
+  Modal
 } from "react-native";
 
 import Toast from "@remobile/react-native-toast";
@@ -24,396 +24,526 @@ global.Buffer = Buffer;
 
 const iconv = require("iconv-lite");
 
-class Example extends Component {
-  events;
-
+class App extends React.Component {
   constructor(props) {
     super(props);
+    this.events = null;
     this.state = {
       isEnabled: false,
-      connectedDevices: [],
+      device: null,
       devices: [],
-      unpairedDevices: [],
-      connecting: false,
       scanning: false,
-      section: 0
+      processing: false
     };
   }
 
   async componentDidMount() {
     this.events = this.props.events;
 
-    const [isEnabled, devices] = await Promise.all([
-      BluetoothSerial.isEnabled(),
-      BluetoothSerial.list()
-    ]);
+    try {
+      const [isEnabled, devices] = await Promise.all([
+        BluetoothSerial.isEnabled(),
+        BluetoothSerial.list()
+      ]);
 
-    this.setState({ isEnabled, devices });
+      this.setState({
+        isEnabled,
+        devices: devices.map(device => ({
+          ...device,
+          paired: true,
+          connected: false
+        }))
+      });
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+    }
 
-    // Bluetooth enable event
     this.events.on("bluetoothEnabled", () => {
       Toast.showShortBottom("Bluetooth enabled");
       this.setState({ isEnabled: true });
     });
 
-    // Bluetooth disable event
     this.events.on("bluetoothDisabled", () => {
       Toast.showShortBottom("Bluetooth disabled");
       this.setState({ isEnabled: false });
     });
 
-    // Error event
-    this.events.on("error", ({ message }) => console.log(`Error: ${message}`));
-
-    // Connection success event
     this.events.on("connectionSuccess", device => {
       if (device) {
         Toast.showShortBottom(
-          `Connection to device ${device.name} has bee established`
+          `Device ${device.name}<${device.id}> has been connected`
         );
-
-        this.setState(state => ({
-          connectedDevices: {
-            ...state.connectedDevices,
-            [device.id]: {
-              connected: true,
-              device
-            }
-          }
-        }));
       }
     });
 
-    // Connection lost event
+    this.events.on("connectionFailed", device => {
+      if (device) {
+        Toast.showShortBottom(
+          `Failed to connect with device ${device.name}<${device.id}>`
+        );
+      }
+    });
+
     this.events.on("connectionLost", device => {
       if (device) {
         Toast.showShortBottom(
-          `Connection to device ${device.name} has been lost`
+          `Device ${device.name}<${device.id}> connection has been lost`
         );
-
-        this.setState(state => ({
-          connectedDevices: {
-            ...state.connectedDevices,
-            [device.id]: {
-              connected: false,
-              device: null
-            }
-          }
-        }));
       }
     });
 
-    // Connection failed event
-    this.events.on("connectionFailed", device => {
-      if (device) {
-        Toast.showShortBottom(`Connection to device ${device.name} has failed`);
+    this.events.on("data", result => {
+      if (result) {
+        const { id, data } = result;
+        console.log(`Data from device ${id} : ${data}`);
+      }
+    });
 
-        this.setState(state => ({
-          connectedDevices: {
-            ...state.connectedDevices,
-            [device.id]: {
-              connected: false,
-              device: null
-            }
-          }
-        }));
+    this.events.on("error", e => {
+      if (e) {
+        console.log(`Error: ${e.message}`);
+        Toast.showShortBottom(e.message);
       }
     });
   }
 
-  /**
-   * [android]
-   * [ios] throws an error
-   * Request enable of bluetooth from user
-   */
-  requestEnable = async () => {
+  requestEnable = () => async () => {
     try {
       await BluetoothSerial.requestEnable();
       this.setState({ isEnabled: true });
-    } catch (err) {
-      Toast.showShortBottom(err.message);
+    } catch (e) {
+      Toast.showShortBottom(e.message);
     }
   };
 
-  /**
-   * [android]
-   * [ios] throws an error
-   * Enable bluetooth on device
-   */
-  enable = async () => {
-    try {
-      await BluetoothSerial.enable();
-    } catch (err) {
-      Toast.showShortBottom(err.message);
-    }
-  };
-
-  /**
-   * [android]
-   * [ios] throws an error
-   * Disable bluetooth on device
-   */
-  disable = async () => {
-    try {
-      await BluetoothSerial.disable();
-    } catch (err) {
-      Toast.showShortBottom(err.message);
-    }
-  };
-
-  /**
-   * Toggle bluetooth adapter
-   * @param {Boolean} value
-   */
   toggleBluetooth = async value => {
-    if (value === true) {
-      await this.enable();
-    } else {
-      await this.disable();
+    try {
+      if (value) {
+        await BluetoothSerial.enable();
+      } else {
+        await BluetoothSerial.disable();
+      }
+    } catch (e) {
+      Toast.showShortBottom(e.message);
     }
   };
 
-  /**
-   * [android]
-   * [ios] throws an error
-   * Discover unpaired devices
-   */
-  discoverUnpaired = async () => {
+  listDevices = async () => {
+    try {
+      const list = await BluetoothSerial.list();
+
+      this.setState(({ devices }) => ({
+        devices: devices.map(device => {
+          const found = list.find(v => v.id === device.id);
+
+          if (found) {
+            return {
+              ...found,
+              paired: true,
+              connected: false
+            };
+          }
+
+          return device;
+        })
+      }));
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+    }
+  };
+
+  discoverUnpairedDevices = async () => {
     this.setState({ scanning: true });
 
     try {
       const unpairedDevices = await BluetoothSerial.listUnpaired();
-      this.setState({ unpairedDevices, scanning: false });
-    } catch (err) {
-      this.setState({ unpairedDevices: [], scanning: false });
-      Toast.showShortBottom(err.message);
+
+      this.setState(({ devices }) => ({
+        scanning: false,
+        devices: devices
+          .map(device => {
+            const found = unpairedDevices.find(d => d.id === device.id);
+
+            if (found) {
+              return {
+                ...device,
+                ...found,
+                connected: false,
+                paired: false
+              };
+            }
+
+            return device.paired || device.connected ? device : null;
+          })
+          .map(v => v)
+      }));
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+
+      this.setState(({ devices }) => ({
+        scanning: false,
+        devices: devices.filter(device => device.paired || device.connected)
+      }));
     }
   };
 
-  /**
-   * Cancel discovery
-   */
-  cancelDiscovery = async () => {
-    if (this.state.scanning) {
-      try {
-        await BluetoothSerial.cancelDiscovery();
-        this.setState({ scanning: false });
-      } catch (err) {
-        Toast.showShortBottom(err.message);
-      }
-    }
-  };
-
-  /**
-   * [android]
-   * [ios] throws an error
-   * Pair device
-   * @param {Object} device
-   */
-  pairDevice = async device => {
+  cancelDiscovery = () => async () => {
     try {
-      const paired = await BluetoothSerial.pairDevice(device.id);
+      await BluetoothSerial.cancelDiscovery();
+      this.setState({ scanning: false });
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+    }
+  };
+
+  toggleDevicePairing = async ({ id, paired }) => {
+    if (paired) {
+      await this.unpairDevice(id);
+    } else {
+      await this.pairDevice(id);
+    }
+  };
+
+  pairDevice = async id => {
+    this.setState({ processing: true });
+
+    try {
+      const paired = await BluetoothSerial.pairDevice(id);
 
       if (paired) {
-        Toast.showShortBottom(`Device ${device.name} paired successfully`);
+        Toast.showShortBottom(
+          `Device ${paired.name}<${paired.id}> paired successfully`
+        );
 
-        this.setState({
-          devices: [...devices, device],
-          unpairedDevices: unpairedDevices.filter(v => v.id !== device.id)
-        });
+        this.setState(({ devices, device }) => ({
+          processing: false,
+          device: {
+            ...device,
+            ...paired,
+            paired: true
+          },
+          devices: devices.map(v => {
+            if (v.id === paired.id) {
+              return {
+                ...v,
+                ...paired,
+                paired: true
+              };
+            }
+
+            return v;
+          })
+        }));
       } else {
-        Toast.showShortBottom(`Device ${device.name} pairing failed`);
+        Toast.showShortBottom(`Device <${id}> pairing failed`);
+        this.setState({ processing: false });
       }
-    } catch (err) {
-      Toast.showShortBottom(err.message);
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+      this.setState({ processing: false });
     }
   };
 
-  /**
-   * Connect to bluetooth device by id
-   * @param {Object} device
-   */
-  connect = async device => {
-    this.setState({ connecting: true });
+  unpairDevice = async id => {
+    this.setState({ processing: true });
 
     try {
-      const connectedDevice = await BluetoothSerial.connect(device.id);
+      const unpaired = await BluetoothSerial.unpairDevice(id);
 
-      Toast.showShortBottom(`Connected to device ${connectedDevice.name}`);
+      if (unpaired) {
+        Toast.showShortBottom(
+          `Device ${unpaired.name}<${unpaired.id}> unpaired successfully`
+        );
 
-      this.setState({
-        device: connectedDevice,
-        connected: true,
-        connecting: false
-      });
-    } catch (err) {
-      Toast.showShortBottom(err.message);
+        this.setState(({ devices, device }) => ({
+          processing: false,
+          device: {
+            ...device,
+            ...unpaired,
+            connected: false,
+            paired: false
+          },
+          devices: devices.map(v => {
+            if (v.id === unpaired.id) {
+              return {
+                ...v,
+                ...unpaired,
+                connected: false,
+                paired: false
+              };
+            }
+
+            return v;
+          })
+        }));
+      } else {
+        Toast.showShortBottom(`Device <${id}> unpairing failed`);
+        this.setState({ processing: false });
+      }
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+      this.setState({ processing: false });
     }
   };
 
-  /**
-   * Disconnect from current bluetooth device
-   */
-  disconnect = async () => {
-    try {
-      await BluetoothSerial.disconnect;
-      this.setState({ connected: false });
-    } catch (err) {
-      Toast.showShortBottom(err.message);
-    }
-  };
-
-  /**
-   * Toggle connection when we have active device
-   * @param {Boolean} value
-   */
-  toggleConnect = async value => {
-    if (value === true && this.state.device) {
-      await this.connect(this.state.device);
+  toggleDeviceConnection = async ({ id, connected }) => {
+    if (connected) {
+      await this.disconnect(id);
     } else {
-      await this.disconnect();
+      await this.connect(id);
     }
   };
 
-  /**
-   * Write message to device
-   * @param {String} message
-   */
-  write = async message => {
-    if (!this.state.connected) {
-      Toast.showShortBottom("You must connect to device first");
-      return;
-    }
+  connect = async id => {
+    this.setState({ processing: true });
 
     try {
-      await BluetoothSerial.write(message);
+      const connected = await BluetoothSerial.device(id).connect();
+
+      if (connected) {
+        Toast.showShortBottom(
+          `Connected to device ${connected.name}<${connected.id}>`
+        );
+
+        this.setState(({ devices, device }) => ({
+          processing: false,
+          device: {
+            ...device,
+            ...connected,
+            connected: true
+          },
+          devices: devices.map(v => {
+            if (v.id === connected.id) {
+              return {
+                ...v,
+                ...connected,
+                connected: true
+              };
+            }
+
+            return v;
+          })
+        }));
+      } else {
+        Toast.showShortBottom(`Failed to connect to device <${id}>`);
+        this.setState({ processing: false });
+      }
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+      this.setState({ processing: false });
+    }
+  };
+
+  disconnect = async id => {
+    this.setState({ processing: true });
+
+    try {
+      await BluetoothSerial.device(id).disconnect();
+
+      this.setState(({ devices, device }) => ({
+        processing: false,
+        device: {
+          ...device,
+          connected: false
+        },
+        devices: devices.map(v => {
+          if (v.id === id) {
+            return {
+              ...v,
+              connected: false
+            };
+          }
+
+          return v;
+        })
+      }));
+    } catch (e) {
+      Toast.showShortBottom(e.message);
+      this.setState({ processing: false });
+    }
+  };
+
+  write = async (id, message) => {
+    try {
+      await BluetoothSerial.device(id).write(message);
       Toast.showShortBottom("Successfuly wrote to device");
-      this.setState({ connected: true });
-    } catch (err) {
-      Toast.showShortBottom(err.message);
+    } catch (e) {
+      Toast.showShortBottom(e.message);
     }
   };
 
-  onDevicePress = async device => {
-    if (this.state.section === 0) {
-      await this.connect(device);
-    } else {
-      await this.pairDevice(device);
+  writePackets = async (id, message, packetSize = 64) => {
+    try {
+      const device = BluetoothSerial.device(id);
+      const toWrite = iconv.encode(message, "cp852");
+      const writePromises = [];
+      const packetCount = Math.ceil(toWrite.length / packetSize);
+
+      for (var i = 0; i < packetCount; i++) {
+        const packet = new Buffer(packetSize);
+        packet.fill(" ");
+        toWrite.copy(packet, 0, i * packetSize, (i + 1) * packetSize);
+        writePromises.push(device.write(packet));
+      }
+
+      await Promise.all(writePromises).then(() =>
+        Toast.showShortBottom("Writed packets")
+      );
+    } catch (e) {
+      Toast.showShortBottom(e.message);
     }
   };
 
-  writePackets = async (message, packetSize = 64) => {
-    const toWrite = iconv.encode(message, "cp852");
-    const writePromises = [];
-    const packetCount = Math.ceil(toWrite.length / packetSize);
+  renderModal = (device, processing) => {
+    if (!device) return null;
 
-    for (var i = 0; i < packetCount; i++) {
-      const packet = new Buffer(packetSize);
-      packet.fill(" ");
-      toWrite.copy(packet, 0, i * packetSize, (i + 1) * packetSize);
-      writePromises.push(BluetoothSerial.write(packet));
-    }
+    const { id, name, paired, connected } = device;
 
-    Promise.all(writePromises).then(() => console.log("Writed packets"));
+    return (
+      <Modal
+        animationType="fade"
+        transparent={false}
+        visible={true}
+        onRequestClose={() => {}}
+      >
+        {device ? (
+          <View
+            style={{
+              flex: 1,
+              justifyContent: "center",
+              alignItems: "center"
+            }}
+          >
+            <Text style={{ fontSize: 18, fontWeight: "bold" }}>{name}</Text>
+            <Text style={{ fontSize: 14 }}>{`<${id}>`}</Text>
+
+            {processing && (
+              <ActivityIndicator
+                style={{ marginTop: 15 }}
+                size={Platform.OS === "ios" ? 1 : 60}
+              />
+            )}
+
+            {!processing && (
+              <View style={{ marginTop: 20, width: "50%" }}>
+                {Platform.OS !== "ios" && (
+                  <Button
+                    title={paired ? "Unpair" : "Pair"}
+                    style={{
+                      backgroundColor: "#22509d"
+                    }}
+                    textStyle={{ color: "#fff" }}
+                    onPress={() => this.toggleDevicePairing(device)}
+                  />
+                )}
+                <Button
+                  title={connected ? "Disconnect" : "Connect"}
+                  style={{
+                    backgroundColor: "#22509d"
+                  }}
+                  textStyle={{ color: "#fff" }}
+                  onPress={() => this.toggleDeviceConnection(device)}
+                />
+                {connected && (
+                  <React.Fragment>
+                    <Button
+                      title="Write"
+                      style={{
+                        backgroundColor: "#22509d"
+                      }}
+                      textStyle={{ color: "#fff" }}
+                      onPress={() =>
+                        this.write(
+                          id,
+                          "This is the test message\r\nDoes it work?\r\nTell me it works!\r\n"
+                        )
+                      }
+                    />
+                    <Button
+                      title="Write packets"
+                      style={{
+                        backgroundColor: "#22509d"
+                      }}
+                      textStyle={{ color: "#fff" }}
+                      onPress={() =>
+                        this.writePackets(
+                          id,
+                          "This is the test message\r\nDoes it work?\r\nTell me it works!\r\n"
+                        )
+                      }
+                    />
+                  </React.Fragment>
+                )}
+                <Button
+                  title="Close"
+                  onPress={() => this.setState({ device: null })}
+                />
+              </View>
+            )}
+          </View>
+        ) : null}
+      </Modal>
+    );
   };
 
   render() {
+    const { isEnabled, device, devices, scanning, processing } = this.state;
+
     return (
       <SafeAreaView style={{ flex: 1 }}>
         <View style={styles.topBar}>
-          <Text style={styles.heading}>Bluetooth Serial Example</Text>
+          <Text style={styles.heading}>Bluetooth Example</Text>
           <View style={styles.enableInfoWrapper}>
-            <Text style={{ fontSize: 12, color: "#FFFFFF", paddingRight: 10 }}>
-              {this.state.isEnabled ? "Enabled" : "Disable"}
+            <Text style={{ fontSize: 14, color: "#fff", paddingRight: 10 }}>
+              {isEnabled ? "ON" : "OFF"}
             </Text>
-            <Switch
-              onValueChange={this.toggleBluetooth}
-              value={this.state.isEnabled}
-            />
+            <Switch onValueChange={this.toggleBluetooth} value={isEnabled} />
           </View>
         </View>
 
-        <View
-          style={[
-            styles.topBar,
-            { justifyContent: "center", paddingHorizontal: 0 }
-          ]}
-        >
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              this.state.section === 0 && styles.activeTabStyle
-            ]}
-            onPress={() => this.setState({ section: 0 })}
-          >
-            <Text style={{ fontSize: 14, color: "#FFFFFF" }}>
-              PAIRED DEVICES
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[
-              styles.tab,
-              this.state.section === 1 && styles.activeTabStyle
-            ]}
-            onPress={() => this.setState({ section: 1 })}
-          >
-            <Text style={{ fontSize: 14, color: "#FFFFFF" }}>
-              UNPAIRED DEVICES
-            </Text>
-          </TouchableOpacity>
-        </View>
-        {this.state.scanning && this.state.section === 1 ? (
-          <View
-            style={{ flex: 1, alignItems: "center", justifyContent: "center" }}
-          >
-            <ActivityIndicator
-              style={{ marginBottom: 15 }}
-              size={Platform.OS === "ios" ? 1 : 60}
-            />
-            <Button
-              textStyle={{ color: "#FFFFFF" }}
-              style={styles.buttonRaised}
-              title="Cancel Discovery"
-              onPress={() => this.cancelDiscovery()}
-            />
-          </View>
+        {scanning ? (
+          isEnabled && (
+            <View
+              style={{
+                flex: 1,
+                alignItems: "center",
+                justifyContent: "center"
+              }}
+            >
+              <ActivityIndicator
+                style={{ marginBottom: 15 }}
+                size={Platform.OS === "ios" ? 1 : 60}
+              />
+              <Button
+                textStyle={{ color: "#fff" }}
+                style={styles.buttonRaised}
+                title="Cancel Discovery"
+                onPress={this.cancelDiscovery}
+              />
+            </View>
+          )
         ) : (
-          <DeviceList
-            showConnectedIcon={this.state.section === 0}
-            connectedId={this.state.device && this.state.device.id}
-            devices={
-              this.state.section === 0
-                ? this.state.devices
-                : this.state.unpairedDevices
-            }
-            onDevicePress={device => this.onDevicePress(device)}
-          />
+          <React.Fragment>
+            {this.renderModal(device, processing)}
+            <DeviceList
+              devices={devices}
+              onDevicePressed={device => this.setState({ device })}
+              onRefresh={this.listDevices}
+            />
+          </React.Fragment>
         )}
 
-        <View style={{ alignSelf: "flex-end", height: 52 }}>
+        <View style={styles.footer}>
           <ScrollView horizontal contentContainerStyle={styles.fixedFooter}>
-            {this.state.isEnabled & this.state.connected ? (
+            {isEnabled && (
               <Button
-                title="Write message"
-                onPress={() =>
-                  this.write(
-                    "This is the test message\r\nDoes it work?\r\nTell me it works!"
-                  )
-                }
+                title="Discover more"
+                onPress={this.discoverUnpairedDevices}
               />
-            ) : null}
-            {this.state.isEnabled & this.state.connected ? (
-              <Button
-                title="Write base64"
-                onPress={() => this.writeBase64Image(base64Image)}
-              />
-            ) : null}
-            {!this.state.isEnabled ? (
-              <Button
-                title="Request enable"
-                onPress={() => this.requestEnable()}
-              />
-            ) : null}
+            )}
+            {!isEnabled && (
+              <Button title="Request enable" onPress={this.requestEnable} />
+            )}
           </ScrollView>
         </View>
       </SafeAreaView>
@@ -421,4 +551,4 @@ class Example extends Component {
   }
 }
 
-export default withSubscription({ subscriptionName: "events" })(Example);
+export default withSubscription({ subscriptionName: "events" })(App);

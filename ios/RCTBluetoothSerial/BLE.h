@@ -177,7 +177,7 @@ typedef void (^CentralManagerDiscoverPeripheralsCallback) (NSMutableArray *perip
  *              active peripheral that connected to central manager.
  *
  */
-- (void)readActivePeripheralRSSI:(NSString *)uuid.
+- (void)readActivePeripheralRSSI:(NSString *)uuid;
 
 /*!
  *  @method enableReadNotification

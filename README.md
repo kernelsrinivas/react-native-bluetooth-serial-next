@@ -4,13 +4,13 @@
 
 React Native version of [BluetoothSerial](https://github.com/don/BluetoothSerial) plugin for both Android and iOS. Pulled from [React Native Bluetooth Serial](https://github.com/rusel1989/react-native-bluetooth-serial).
 
-**Notes:** In iOS, this currently supports preconfigured services which are Read Bear lab, Adafruit BLE, Bluegiga, Laird Virtual Serial Port, and Rongta.
+For iOS, this module currently supports preconfigured services which are Read Bear Lab, Adafruit BLE, Bluegiga, Laird Virtual Serial Port, and Rongta.
 
 ## Table of Contents
 
 - [Getting started](#getting-started)
 - [Example](#example)
-- [API Reference](#api-reference)
+- [API References](#api-references)
   - [Device object](#device-object)
   - [High order component](#high-order-component)
   - [Methods](#methods)
@@ -72,11 +72,11 @@ For Android, you need to put the following code to `AndroidManifest.xml` in `and
 4. `npm start`
 5. `react-native run-ios` or `react-native run-android`
 
-## API Reference
+## API References
 
 ### Device object
 
-This is basically the result object from API methods depends on application environment operation system.
+This is basically the result object from API methods depending on operation system.
 
 **iOS**
 
@@ -94,7 +94,7 @@ This is basically the result object from API methods depends on application envi
 ```js
 {
     id: '111-111-111-111',
-    uuid: '111-111-111-111',
+    address: '111-111-111-111',
     name: 'Bluetooth Printer',
     class: 'This field might not be present in the object',
 }
@@ -104,7 +104,7 @@ This is basically the result object from API methods depends on application envi
 
 #### withSubscription( options : <span style="color:#999;">Object</span> ) : <span style="color:#999;">React.Component</span>
 
-This high order component will create an event listener and send it though as a prop. This will also remove all listeners on React lifecycle `componentWillUnmount` as well.
+This method will create an event listener and send it though as a component prop and it will remove all event listeners on `componentWillUnmount` as well.
 
 - options : <span style="color:#999;">Object</span>
   - subscriptionName : <span style="color:#999;">String</span> = `'subscription'`
@@ -125,13 +125,13 @@ export default withSubscription({
 
 ### Methods
 
-- [Bluetooth adapter service](#bluetooth-adapter-service)
+- [Bluetooth adapter](#bluetooth-adapter)
 - [Device pairing](#device-pairing)
 - [Device connection](#device-connection)
 - [Device IO](#device-io)
 - [Device buffer](#device-buffer)
 
-#### Bluetooth adapter service
+#### Bluetooth adapter
 
 ##### requestEnable() : <span style="color:#999;">Promise\<Boolean></span>
 

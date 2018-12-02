@@ -3,7 +3,7 @@ import { StyleSheet } from "react-native";
 const styles = StyleSheet.create({
   container: {
     flex: 0.9,
-    backgroundColor: "#F5FCFF"
+    backgroundColor: "#f5fcff"
   },
   topBar: {
     height: 56,
@@ -12,39 +12,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     elevation: 6,
-    backgroundColor: "#7B1FA2"
+    backgroundColor: "#22509d"
   },
   heading: {
     fontWeight: "bold",
     fontSize: 16,
     alignSelf: "center",
-    color: "#FFFFFF"
+    color: "#fff"
   },
   enableInfoWrapper: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center"
-  },
-  tab: {
-    alignItems: "center",
-    flex: 0.5,
-    height: 56,
-    justifyContent: "center",
-    borderBottomWidth: 6,
-    borderColor: "transparent"
-  },
-  connectionInfoWrapper: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 25
-  },
-  connectionInfo: {
-    fontWeight: "bold",
-    alignSelf: "center",
-    fontSize: 18,
-    marginVertical: 10,
-    color: "#238923"
   },
   listContainer: {
     borderColor: "#ccc",
@@ -52,11 +31,27 @@ const styles = StyleSheet.create({
   },
   listItem: {
     flex: 1,
-    height: 48,
+    height: "auto",
     paddingHorizontal: 16,
     borderColor: "#ccc",
     borderBottomWidth: 0.5,
-    justifyContent: "center"
+    justifyContent: "center",
+    paddingTop: 15,
+    paddingBottom: 15
+  },
+  listItemStatus: {
+    paddingLeft: 5,
+    paddingRight: 5,
+    paddingTop: 2,
+    paddingBottom: 2,
+    fontWeight: "bold",
+    fontSize: 12,
+    color: "#fff"
+  },
+  footer: {
+    height: 52,
+    borderTopWidth: 1,
+    borderTopColor: "#999"
   },
   fixedFooter: {
     flexDirection: "row",
@@ -73,16 +68,15 @@ const styles = StyleSheet.create({
     justifyContent: "center"
   },
   buttonText: {
-    color: "#7B1FA2",
+    color: "#22509d",
     fontWeight: "bold",
     fontSize: 14
   },
   buttonRaised: {
-    backgroundColor: "#7B1FA2",
+    backgroundColor: "#22509d",
     borderRadius: 2,
     elevation: 2
-  },
-  activeTabStyle: { borderBottomWidth: 6, borderColor: "#009688" }
+  }
 });
 
 export default styles;

@@ -34,15 +34,13 @@ export const withSubscription = (
       ? options.destroyOnWilUnmount
       : true;
 
-  let emitter = DeviceEventEmitter;
-  emitter.on = DeviceEventEmitter.addListener;
-  emitter.off = DeviceEventEmitter.removeListener;
-  emitter.remove = DeviceEventEmitter.removeAllListeners;
+  const subscription = DeviceEventEmitter;
+  subscription.on = DeviceEventEmitter.addListener;
+  subscription.off = DeviceEventEmitter.removeListener;
+  subscription.remove = DeviceEventEmitter.removeAllListeners;
 
   return class RTCBluetoothSerialComponent extends React.Component {
     componentWillUnmount() {
-      const subscription = this.props[subscriptionName];
-
       if (destroyOnWilUnmount && subscription) {
         if (typeof subscription.remove === "function") {
           subscription.remove();
@@ -50,13 +48,17 @@ export const withSubscription = (
 
         if (typeof subscription.removeAllListeners === "function") {
           subscription.removeAllListeners();
+          console.log(subscription);
         }
       }
     }
 
     render() {
       return (
-        <WrappedComponent {...this.props} {...{ [subscriptionName]: emitter }}>
+        <WrappedComponent
+          {...this.props}
+          {...{ [subscriptionName]: subscription }}
+        >
           {this.props.children}
         </WrappedComponent>
       );
